@@ -9,7 +9,8 @@ function getSqliteDb(): any {
 
   let Database: any;
   try {
-    Database = require("bun:sqlite");
+    const mod = require("bun:sqlite");
+    Database = mod.Database || mod;
   } catch {
     try {
       Database = require("better-sqlite3");
