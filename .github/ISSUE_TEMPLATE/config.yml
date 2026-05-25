@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/6jt8/DC-Lyra/discussions
+    about: Ask questions or share ideas in Discussions.
+  - name: Support Server
+    url: https://discord.gg/7yhR9RekC5
+    about: Join the Discord support server for live help.

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "useUnknownInCatchVariables": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "moduleResolution": "node16",
+    "allowSyntheticDefaultImports": true,
+    "types": ["node", "bun-types", "vitest/globals"]
+  },
+  "include": ["src/**/*", "languages/**/*", "src/types/**/*.d.ts", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

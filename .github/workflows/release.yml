@@ -1,0 +1,131 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Parse tag info
+        id: tag
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full zip
+
+      - name: Build
+        run: |
+          npm install
+          npm run build
+          if [ ! -d "dist" ]; then
+            echo "ERROR: Build did not produce a 'dist' directory"
+            exit 1
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREV_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' "${{ github.ref_name }}^" 2>/dev/null || true)
+          if [ -n "${PREV_TAG:-}" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          COMMITS=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Initial release")
+          MERGE_LOG=$(git log "$RANGE" --merges --pretty=format:"%s" 2>/dev/null || true)
+          SEEN_AUTHORS=()
+          AUTHORS_LIST=()
+          while IFS= read -r line; do
+            if echo "$line" | grep -qP 'Merge pull request #\d+ from [^/]+/'; then
+              AUTHOR=$(echo "$line" | grep -oP 'from \K[^/]+')
+              if [ -n "${AUTHOR:-}" ] && [ "$AUTHOR" != "6jt8" ] && ! echo "$AUTHOR" | grep -q '\['; then
+                ALREADY_SEEN=false
+                for S in "${SEEN_AUTHORS[@]}"; do
+                  if [ "$S" = "$AUTHOR" ]; then
+                    ALREADY_SEEN=true
+                    break
+                  fi
+                done
+                if [ "$ALREADY_SEEN" = false ]; then
+                  SEEN_AUTHORS+=("$AUTHOR")
+                  AUTHORS_LIST+=("$AUTHOR")
+                fi
+              fi
+            fi
+          done <<< "$MERGE_LOG"
+          NOTES="### What's Changed"
+          NOTES+=$'\n\n'"${COMMITS}"
+          NOTES+=$'\n'
+          NUM_AUTHORS=${#AUTHORS_LIST[@]}
+          if [ "$NUM_AUTHORS" -gt 0 ]; then
+            THANKS=""
+            for i in "${!AUTHORS_LIST[@]}"; do
+              AUTHOR="${AUTHORS_LIST[$i]}"
+              if [ "$i" -gt 0 ]; then
+                if [ "$i" -eq $((NUM_AUTHORS - 1)) ]; then
+                  THANKS+=", and "
+                else
+                  THANKS+=", "
+                fi
+              fi
+              THANKS+="[$AUTHOR](https://github.com/$AUTHOR)"
+            done
+            if [ "$NUM_AUTHORS" -eq 1 ]; then
+              NOTES+=$'\n\n'"**Big thanks to $THANKS for their contribution!**"
+            else
+              NOTES+=$'\n\n'"**Big thanks to $THANKS for their contributions!**"
+            fi
+          fi
+          echo "$NOTES" > changelog_body.txt
+
+      - name: Prepare dist archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.tag.outputs.version }}"
+          rm -rf dist-package
+          mkdir -p dist-package
+          cp -r dist dist-package/
+          cp package.json dist-package/
+          cp package-lock.json dist-package/ 2>/dev/null || true
+          cp bun.lock dist-package/ 2>/dev/null || true
+          cp .env.example dist-package/
+          cp tsconfig.json dist-package/
+          cd dist-package
+          zip -r "../lyra-music-${VERSION}-dist.zip" .
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ steps.tag.outputs.version }}"
+          body_path: changelog_body.txt
+          files: |
+            lyra-music-*-dist.zip
+          draft: false
+          prerelease: false

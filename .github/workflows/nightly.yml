@@ -1,0 +1,109 @@
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Delete old nightly release and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          IDS=$(gh release list --limit 100 --json id,tagName --jq '.[] | select(.tagName=="nightly") | .id')
+          for id in $IDS; do
+            gh api -X DELETE "repos/{owner}/{repo}/releases/$id" 2>/dev/null || true
+          done
+          git tag -d nightly 2>/dev/null || true
+          git push origin :refs/tags/nightly 2>/dev/null || true
+
+      - name: Generate nightly version
+        id: version
+        shell: bash
+        run: |
+          echo "tag=nightly" >> "$GITHUB_OUTPUT"
+          echo "date=$(date +'%Y%m%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full zip
+
+      - name: Build
+        run: |
+          npm install
+          npm run build
+          if [ ! -d "dist" ]; then
+            echo "ERROR: Build did not produce a 'dist' directory"
+            exit 1
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREV_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null || true)
+          COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || true)
+          {
+            echo "### What's Changed"
+            echo ""
+            if [ -n "${COMMITS:-}" ]; then
+              echo "${COMMITS}"
+            else
+              echo "- No new changes since ${PREV_TAG:-last release}"
+            fi
+          } > changelog_body.txt
+
+      - name: Create nightly tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -af nightly -m "Nightly build $(date +'%Y-%m-%d')"
+          git push origin nightly --force
+
+      - name: Prepare dist archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATE="${{ steps.version.outputs.date }}"
+          rm -rf dist-package
+          mkdir -p dist-package
+          cp -r dist dist-package/
+          cp package.json dist-package/
+          cp package-lock.json dist-package/ 2>/dev/null || true
+          cp bun.lock dist-package/ 2>/dev/null || true
+          cp .env.example dist-package/
+          cp tsconfig.json dist-package/
+          cd dist-package
+          zip -r "../lyra-music-nightly-${DATE}-dist.zip" .
+          cd ..
+
+      - name: Create Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ steps.version.outputs.tag }}"
+          name: "Nightly Build (${{ steps.version.outputs.date }})"
+          body_path: changelog_body.txt
+          files: |
+            lyra-music-nightly-*-dist.zip
+          draft: false
+          prerelease: true
