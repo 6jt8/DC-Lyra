@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyra</title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: black;
+            overflow: hidden;
+            font-family: 'Press Start 2P', cursive;
+            color: #00ff00;
+            text-align: center;
+        }
+
+        .content h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            animation: flicker 1.5s infinite alternate;
+        }
+
+        .content h2 {
+            font-size: 1.2em;
+            animation: flicker 2s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .matrix {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .matrix span {
+            position: absolute;
+            top: -100%;
+            width: 2px;
+            height: 100%;
+            background: #00ff00;
+            opacity: 0;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="content">
+    <h1>Lyra</h1>
+    <h2>Bot is Online</h2>
+</div>
+
+<div class="matrix" id="matrix"></div>
+
+<script>
+    const matrix = document.getElementById("matrix");
+
+    for (let i = 0; i < 30; i++) {
+        const span = document.createElement("span");
+        span.style.left = Math.random() * 100 + "%";
+        span.style.animationDuration = (3 + Math.random() * 5) + "s";
+        span.style.animationDelay = Math.random() * 5 + "s";
+        matrix.appendChild(span);
+    }
+</script>
+
+</body>
+</html>
