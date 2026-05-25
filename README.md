@@ -105,7 +105,9 @@
 
 ### ⚙️ **System**
 - Fully TypeScript — type‑safe
-- PostgreSQL persistence (Neon, Supabase, local supported)
+- PostgreSQL persistence with **SQLite fallback** (`./data/lyra.db`)
+  - Bun: uses built-in `bun:sqlite`
+  - Node: uses optional `better-sqlite3`
 - Custom emoji system (auto‑upload to app)
 - Slash commands with autocomplete
 - Express status page (port 3000)
@@ -153,7 +155,7 @@ npm start
 </details>
 
 <details>
-<summary><b>Option B: Bun</b> (fast direct TS)</summary>
+<summary><b>Option B: Bun</b> (fast direct TS, no build step)</summary>
 
 ```bash
 git clone https://github.com/sayrox106/Lyra-MC.git
@@ -164,7 +166,8 @@ bun install
 cp .env.example .env
 # Edit .env
 
-bun run src/index.ts
+# 🚨 Use start:bun — NOT "bun start" (that runs node dist/ which needs build)
+bun run start:bun
 ```
 </details>
 
@@ -310,7 +313,8 @@ Lyra-MC/
 │   │   ├── player-store.ts
 │   │   └── player-cleanup.ts
 │   ├── database/
-│   │   └── database.ts     # PostgreSQL (pg) with Neon/Supabase support
+│   │   ├── database.ts     # PostgreSQL (pg) with Neon/Supabase + auto SQLite fallback
+│   │   └── sqlite.ts       # SQLite fallback via bun:sqlite / better-sqlite3
 │   ├── emoji/              # Custom emoji manager + uploader
 │   ├── ui/                 # colors, icons, responseHandler
 │   └── utils/              # language, musicCard, validation, statusManager...
@@ -351,6 +355,8 @@ Optional but recommended:
 - `lowMemoryMode`
 
 Database is optional — bot runs fully without it (playlists & some features limited).
+
+> **SQLite fallback**: If PostgreSQL is unreachable or `DATABASE_URL` is not set, the bot automatically switches to SQLite (`./data/lyra.db`). On Bun the built-in `bun:sqlite` is used; on Node.js the optional `better-sqlite3` package is required. Bun users do NOT need `better-sqlite3`.
 
 <h2 align="center">🤝 Contributing</h2>
 
