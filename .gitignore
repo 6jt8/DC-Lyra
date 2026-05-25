@@ -32,3 +32,6 @@ Thumbs.db
 # Test
 test/
 *.test.js
+
+# Database
+data/

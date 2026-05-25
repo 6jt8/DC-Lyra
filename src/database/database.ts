@@ -2,8 +2,11 @@ import pg from "pg";
 import { config } from "../config.js";
 import { getLangSync } from "../utils/language.js";
 import { colors } from "../ui/colors.js";
+import { SqliteCollection, initSqliteTables } from "./sqlite.js";
 
 export let dbConnected = false;
+export let usingSqlite = false;
+
 const pool = config.databaseUrl
   ? new pg.Pool({
       connectionString: config.databaseUrl,
@@ -97,9 +100,7 @@ function mapUpdate(table: string, update: Record<string, any>): { sets: string[]
           );
           vals.push((v as any).name);
         } else {
-          sets.push(
-            `${col} = COALESCE(${tcol}, '[]'::jsonb) - $${idx++}`
-          );
+          sets.push(`${col} = COALESCE(${tcol}, '[]'::jsonb) - $${idx++}`);
           vals.push(v);
         }
       }
@@ -116,173 +117,141 @@ class PgCollection {
   }
 
   async findOne(filter: Record<string, any>): Promise<any | null> {
-    if (!pool) return null;
-    const { sql, vals } = mapFilter(filter);
-    const res = await pool.query(
-      `SELECT * FROM ${this.table} WHERE ${sql} LIMIT 1`,
-      vals
-    );
-    if (res.rows.length === 0) return null;
-    return this.rowToDoc(res.rows[0]);
+    if (!pool || usingSqlite || !dbConnected) return null;
+    try {
+      const { sql, vals } = mapFilter(filter);
+      const res = await pool.query(`SELECT * FROM ${this.table} WHERE ${sql} LIMIT 1`, vals);
+      if (res.rows.length === 0) return null;
+      return this.rowToDoc(res.rows[0]);
+    } catch { return null; }
   }
 
   find(filter: Record<string, any>): { toArray: () => Promise<any[]> } {
     const toArray = async (): Promise<any[]> => {
-      if (!pool) return [];
-      const { sql, vals } = mapFilter(filter);
-      const res = await pool.query(
-        `SELECT * FROM ${this.table} WHERE ${sql}`,
-        vals
-      );
-      return res.rows.map((r) => this.rowToDoc(r));
+      if (!pool || usingSqlite || !dbConnected) return [];
+      try {
+        const { sql, vals } = mapFilter(filter);
+        const res = await pool.query(`SELECT * FROM ${this.table} WHERE ${sql}`, vals);
+        return res.rows.map((r) => this.rowToDoc(r));
+      } catch { return []; }
     };
     return { toArray };
   }
 
   async insertOne(doc: Record<string, any>): Promise<any> {
-    if (!pool) return null;
-    const { _id, ...rest } = doc;
-    const columns: string[] = [];
-    const vals: any[] = [];
-    const params: string[] = [];
-    let idx = 1;
-    if (_id !== undefined) {
-      columns.push("id");
-      params.push(`$${idx++}`);
-      vals.push(_id);
-    }
-    for (const [k, v] of Object.entries(rest)) {
-      columns.push(toSnake(k));
-      params.push(`$${idx++}`);
-      vals.push(Array.isArray(v) || typeof v === "object" ? JSON.stringify(v) : v);
-    }
-    const res = await pool.query(
-      `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES (${params.join(", ")}) RETURNING *`,
-      vals
-    );
-    return this.rowToDoc(res.rows[0]);
+    if (!pool || usingSqlite || !dbConnected) return null;
+    try {
+      const { _id, ...rest } = doc;
+      const columns: string[] = [];
+      const vals: any[] = [];
+      const params: string[] = [];
+      let idx = 1;
+      if (_id !== undefined) {
+        columns.push("id");
+        params.push(`$${idx++}`);
+        vals.push(_id);
+      }
+      for (const [k, v] of Object.entries(rest)) {
+        columns.push(toSnake(k));
+        params.push(`$${idx++}`);
+        vals.push(Array.isArray(v) || typeof v === "object" ? JSON.stringify(v) : v);
+      }
+      const res = await pool.query(
+        `INSERT INTO ${this.table} (${columns.join(", ")}) VALUES (${params.join(", ")}) RETURNING *`,
+        vals
+      );
+      return this.rowToDoc(res.rows[0]);
+    } catch { return null; }
   }
 
-  async updateOne(
-    filter: Record<string, any>,
-    update: Record<string, any>,
-    options?: { upsert?: boolean }
-  ): Promise<any> {
-    if (!pool) return null;
-    const { sql: whereSql, vals: whereVals } = mapFilter(filter);
-    const { sets, vals: setVals } = mapUpdate(this.table, update);
-    if (sets.length === 0) return null;
+  async updateOne(filter: Record<string, any>, update: Record<string, any>, options?: { upsert?: boolean }): Promise<any> {
+    if (!pool || usingSqlite || !dbConnected) return null;
+    try {
+      const { sql: whereSql, vals: whereVals } = mapFilter(filter);
+      const { sets, vals: setVals } = mapUpdate(this.table, update);
+      if (sets.length === 0) return null;
 
-    const allVals = [...setVals, ...whereVals];
-    const paramOffset = setVals.length;
-    const whereClause = whereSql
-      ? `WHERE ${whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOffset}`)}`
-      : "";
-    const setClause = sets.join(", ");
+      const allVals = [...setVals, ...whereVals];
+      const paramOffset = setVals.length;
+      const whereClause = whereSql
+        ? `WHERE ${whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOffset}`)}`
+        : "";
+      const setClause = sets.join(", ");
 
-    if (options?.upsert) {
-      const existing = await this.findOne(filter);
-      if (existing) {
-        const paramOff = setVals.length;
-        const rewhere = whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOff}`);
-        await pool.query(
-          `UPDATE ${this.table} SET ${setClause} WHERE ${rewhere}`,
-          [...setVals, ...whereVals]
-        );
-      } else {
-        const doc: Record<string, any> = {};
-        for (const [k, v] of Object.entries(filter)) {
-          if (k !== "_id") doc[k] = v;
+      if (options?.upsert) {
+        const existing = await this.findOne(filter);
+        if (existing) {
+          const rewhere = whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + setVals.length}`);
+          await pool.query(`UPDATE ${this.table} SET ${setClause} WHERE ${rewhere}`, [...setVals, ...whereVals]);
+        } else {
+          const doc: Record<string, any> = {};
+          for (const [k, v] of Object.entries(filter)) {
+            if (k !== "_id") doc[k] = v;
+          }
+          await this.insertOne(doc);
+          const rewhere = whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + setVals.length}`);
+          await pool.query(`UPDATE ${this.table} SET ${setClause} WHERE ${rewhere}`, [...setVals, ...whereVals]);
         }
-        await this.insertOne(doc);
-        const paramOff = setVals.length;
-        const rewhere = whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOff}`);
-        await pool.query(
-          `UPDATE ${this.table} SET ${setClause} WHERE ${rewhere}`,
-          [...setVals, ...whereVals]
-        );
+        return null;
       }
-      return null;
-    }
 
-    await pool.query(
-      `UPDATE ${this.table} SET ${setClause} ${whereClause}`,
-      allVals
-    );
-    return null;
+      await pool.query(`UPDATE ${this.table} SET ${setClause} ${whereClause}`, allVals);
+      return null;
+    } catch { return null; }
   }
 
   async deleteOne(filter: Record<string, any>): Promise<{ deletedCount: number }> {
-    if (!pool) return { deletedCount: 0 };
-    const { sql, vals } = mapFilter(filter);
-    const res = await pool.query(
-      `DELETE FROM ${this.table} WHERE ${sql}`,
-      vals
-    );
-    return { deletedCount: res.rowCount ?? 0 };
+    if (!pool || usingSqlite || !dbConnected) return { deletedCount: 0 };
+    try {
+      const { sql, vals } = mapFilter(filter);
+      const res = await pool.query(`DELETE FROM ${this.table} WHERE ${sql}`, vals);
+      return { deletedCount: res.rowCount ?? 0 };
+    } catch { return { deletedCount: 0 }; }
   }
 
-  async findOneAndUpdate(
-    filter: Record<string, any>,
-    update: Record<string, any>,
-    options?: { upsert?: boolean; returnDocument?: "before" | "after" }
-  ): Promise<any | null> {
-    if (!pool) return null;
-    const { sql: whereSql, vals: whereVals } = mapFilter(filter);
-    const { sets, vals: setVals } = mapUpdate(this.table, update);
-    if (sets.length === 0) return null;
+  async findOneAndUpdate(filter: Record<string, any>, update: Record<string, any>, options?: { upsert?: boolean; returnDocument?: "before" | "after" }): Promise<any | null> {
+    if (!pool || usingSqlite || !dbConnected) return null;
+    try {
+      const { sql: whereSql, vals: whereVals } = mapFilter(filter);
+      const { sets, vals: setVals } = mapUpdate(this.table, update);
+      if (sets.length === 0) return null;
 
-    const allVals = [...setVals, ...whereVals];
-    const paramOffset = setVals.length;
-    const whereClause = `WHERE ${whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOffset}`)}`;
-    const setClause = sets.join(", ");
-    const returning = options?.returnDocument === "before" ? "RETURNING *" : "RETURNING *";
+      const allVals = [...setVals, ...whereVals];
+      const whereClause = `WHERE ${whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + setVals.length}`)}`;
+      const setClause = sets.join(", ");
 
-    if (options?.upsert) {
-      const existing = await this.findOne(filter);
-      if (existing) {
-        const paramOff = setVals.length;
-        const rewhere = whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOff}`);
-        const res = await pool.query(
-          `UPDATE ${this.table} SET ${setClause} WHERE ${rewhere} ${returning}`,
-          [...setVals, ...whereVals]
-        );
-        return res.rows.length ? this.rowToDoc(res.rows[0]) : null;
-      } else {
-        const doc: Record<string, any> = {};
-        for (const [k, v] of Object.entries(filter)) {
-          if (k !== "_id") doc[k] = v;
+      if (options?.upsert) {
+        const existing = await this.findOne(filter);
+        if (existing) {
+          const res = await pool.query(`UPDATE ${this.table} SET ${setClause} ${whereClause} RETURNING *`, allVals);
+          return res.rows.length ? this.rowToDoc(res.rows[0]) : null;
+        } else {
+          const doc: Record<string, any> = {};
+          for (const [k, v] of Object.entries(filter)) {
+            if (k !== "_id") doc[k] = v;
+          }
+          await this.insertOne(doc);
+          const res = await pool.query(`UPDATE ${this.table} SET ${setClause} ${whereClause} RETURNING *`, allVals);
+          return res.rows.length ? this.rowToDoc(res.rows[0]) : null;
         }
-        await this.insertOne(doc);
-        const paramOff = setVals.length;
-        const rewhere = whereSql.replace(/\$\d+/g, (m) => `$${parseInt(m.slice(1)) + paramOff}`);
-        const res = await pool.query(
-          `UPDATE ${this.table} SET ${setClause} WHERE ${rewhere} ${returning}`,
-          [...setVals, ...whereVals]
-        );
-        return res.rows.length ? this.rowToDoc(res.rows[0]) : null;
       }
-    }
 
-    const res = await pool.query(
-      `UPDATE ${this.table} SET ${setClause} ${whereClause} ${returning}`,
-      allVals
-    );
-    return res.rows.length ? this.rowToDoc(res.rows[0]) : null;
+      const res = await pool.query(`UPDATE ${this.table} SET ${setClause} ${whereClause} RETURNING *`, allVals);
+      return res.rows.length ? this.rowToDoc(res.rows[0]) : null;
+    } catch { return null; }
   }
 
   async countDocuments(filter?: Record<string, any>): Promise<number> {
-    if (!pool) return 0;
-    if (!filter) {
-      const res = await pool.query(`SELECT COUNT(*) FROM ${this.table}`);
+    if (!pool || usingSqlite || !dbConnected) return 0;
+    try {
+      if (!filter) {
+        const res = await pool.query(`SELECT COUNT(*) FROM ${this.table}`);
+        return parseInt(res.rows[0].count, 10);
+      }
+      const { sql, vals } = mapFilter(filter);
+      const res = await pool.query(`SELECT COUNT(*) FROM ${this.table} WHERE ${sql}`, vals);
       return parseInt(res.rows[0].count, 10);
-    }
-    const { sql, vals } = mapFilter(filter);
-    const res = await pool.query(
-      `SELECT COUNT(*) FROM ${this.table} WHERE ${sql}`,
-      vals
-    );
-    return parseInt(res.rows[0].count, 10);
+    } catch { return 0; }
   }
 
   private rowToDoc(row: any): any {
@@ -300,25 +269,36 @@ class PgCollection {
   }
 }
 
+let pgPlaylists: PgCollection | null = null;
+let pgAutoplay: PgCollection | null = null;
+let pgLanguages: PgCollection | null = null;
+let pgStats: PgCollection | null = null;
+
+let sqlPlaylists: SqliteCollection | null = null;
+let sqlAutoplay: SqliteCollection | null = null;
+let sqlLanguages: SqliteCollection | null = null;
+let sqlStats: SqliteCollection | null = null;
+
 export async function connectToDatabase(): Promise<void> {
   let lang: any;
   try {
     lang = getLangSync();
-    if (!pool) {
+
+    if (!config.databaseUrl) {
       console.warn(
         "\x1b[33m[ WARNING ]\x1b[0m " +
           (lang.console?.database?.skippingConnection || "Skipping database connection as URL is not provided.")
       );
+      await switchToSqlite(lang);
       return;
     }
 
     console.log("\x1b[36m[ DATABASE ]\x1b[0m Attempting to connect to PostgreSQL...");
-
-    await pool.query("SELECT 1");
-
-    await initTables();
+    await pool!.query("SELECT 1");
+    await initPgTables();
 
     dbConnected = true;
+    usingSqlite = false;
 
     console.log("\n" + "─".repeat(40));
     console.log(
@@ -338,10 +318,26 @@ export async function connectToDatabase(): Promise<void> {
     );
     console.error("\x1b[31m[ DATABASE ERROR ]\x1b[0m", err.message);
     dbConnected = false;
+    await switchToSqlite(lang);
   }
 }
 
-async function initTables(): Promise<void> {
+async function switchToSqlite(lang: any): Promise<void> {
+  if (initSqliteTables()) {
+    dbConnected = true;
+    usingSqlite = true;
+    console.log(
+      `${colors.magenta}${colors.bright}${lang?.console?.bot?.databaseConnection || "🕸️  DATABASE CONNECTION"}${colors.reset}`
+    );
+    console.log(
+      "\x1b[36m[ DATABASE ]\x1b[0m",
+      "\x1b[33mUsing SQLite fallback ✅\x1b[0m"
+    );
+    return;
+  }
+}
+
+async function initPgTables(): Promise<void> {
   if (!pool) return;
   await pool.query(`
     CREATE TABLE IF NOT EXISTS playlists (
@@ -372,44 +368,65 @@ async function initTables(): Promise<void> {
       total_plays BIGINT DEFAULT 0
     );
   `);
+  pgPlaylists = new PgCollection("playlists");
+  pgAutoplay = new PgCollection("autoplay_settings");
+  pgLanguages = new PgCollection("guild_languages");
+  pgStats = new PgCollection("stats");
+  sqlPlaylists = null;
+  sqlAutoplay = null;
+  sqlLanguages = null;
+  sqlStats = null;
 }
 
-const playlistCol = pool ? new PgCollection("playlists") : null;
-const autoplayCol = pool ? new PgCollection("autoplay_settings") : null;
-const languageCol = pool ? new PgCollection("guild_languages") : null;
-const statsCol = pool ? new PgCollection("stats") : null;
-
-export const playlistCollection: PgCollection = playlistCol ?? (null as unknown as PgCollection);
-export const autoplayCollection: PgCollection = autoplayCol ?? (null as unknown as PgCollection);
-export const languageCollection: PgCollection = languageCol ?? (null as unknown as PgCollection);
-export const statsCollection: PgCollection = statsCol ?? (null as unknown as PgCollection);
-
-export function getPlaylistCollection(): PgCollection | null {
-  return playlistCol;
+export function getPlaylistCollection(): PgCollection | SqliteCollection | null {
+  if (usingSqlite) {
+    if (!sqlPlaylists) sqlPlaylists = new SqliteCollection("playlists");
+    return sqlPlaylists;
+  }
+  return pgPlaylists;
 }
 
-export function getAutoplayCollection(): PgCollection | null {
-  return autoplayCol;
+export function getAutoplayCollection(): PgCollection | SqliteCollection | null {
+  if (usingSqlite) {
+    if (!sqlAutoplay) sqlAutoplay = new SqliteCollection("autoplay_settings");
+    return sqlAutoplay;
+  }
+  return pgAutoplay;
 }
 
-export function getLanguageCollection(): PgCollection | null {
-  return languageCol;
+export function getLanguageCollection(): PgCollection | SqliteCollection | null {
+  if (usingSqlite) {
+    if (!sqlLanguages) sqlLanguages = new SqliteCollection("guild_languages");
+    return sqlLanguages;
+  }
+  return pgLanguages;
 }
 
-export function mustGetPlaylistCollection(): PgCollection {
-  if (!playlistCol) throw new Error("Database not connected (playlistCollection)");
-  return playlistCol;
+export function getStatsCollection(): PgCollection | SqliteCollection | null {
+  if (usingSqlite) {
+    if (!sqlStats) sqlStats = new SqliteCollection("stats");
+    return sqlStats;
+  }
+  return pgStats;
 }
 
-export function mustGetAutoplayCollection(): PgCollection {
-  if (!autoplayCol) throw new Error("Database not connected (autoplayCollection)");
-  return autoplayCol;
+export function mustGetPlaylistCollection(): PgCollection | SqliteCollection {
+  const col = getPlaylistCollection();
+  if (!col) throw new Error("Database not connected (playlistCollection)");
+  return col;
+}
+
+export function mustGetAutoplayCollection(): PgCollection | SqliteCollection {
+  const col = getAutoplayCollection();
+  if (!col) throw new Error("Database not connected (autoplayCollection)");
+  return col;
 }
 
 export async function incrementGlobalPlays(): Promise<number> {
-  if (!statsCol) return 0;
+  const col = getStatsCollection();
+  if (!col) return 0;
   try {
-    const result = await statsCol.findOneAndUpdate(
+    const result = await col.findOneAndUpdate(
       { _id: "global" },
       { $inc: { totalPlays: 1 } },
       { upsert: true, returnDocument: "after" }
@@ -421,9 +438,10 @@ export async function incrementGlobalPlays(): Promise<number> {
 }
 
 export async function getGlobalPlays(): Promise<number> {
-  if (!statsCol) return 0;
+  const col = getStatsCollection();
+  if (!col) return 0;
   try {
-    const doc = await statsCol.findOne({ _id: "global" });
+    const doc = await col.findOne({ _id: "global" });
     return (doc as any)?.totalPlays ?? 0;
   } catch {
     return 0;

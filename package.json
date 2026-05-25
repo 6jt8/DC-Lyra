@@ -7,7 +7,7 @@
     "dev:bun": "bun run src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js",
-    "start:bun": "bun run dist/src/index.js",
+    "start:bun": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -20,6 +20,7 @@
     "@discordjs/rest": "^2.6.1",
     "@napi-rs/canvas": "^0.1.83",
     "axios": "^1.8.1",
+    "better-sqlite3": "^12.10.0",
     "discord-api-types": "^0.38.47",
     "discord.js": "^14.25.1",
     "dotenv": "^16.4.7",
