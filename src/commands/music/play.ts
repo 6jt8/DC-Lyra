@@ -14,6 +14,58 @@ import { createPlayerForGuild, destroyPlayerIfDifferentChannel, playWithRetries 
 
 const MAX_QUEUE_SIZE = 500;
 
+function isLavalinkConnectionError(err: any): boolean {
+    let current = err;
+    for (let i = 0; i < 5 && current; i++) {
+        const code = current.code;
+        const msg = String(current.message || '').toLowerCase();
+        if (
+            code === 'ECONNREFUSED' ||
+            code === 'ECONNRESET' ||
+            code === 'ETIMEDOUT' ||
+            code === 'ENOTFOUND' ||
+            code === 'ECONNABORTED' ||
+            msg.includes('econnrefused') ||
+            msg.includes('econnreset') ||
+            msg.includes('etimedout') ||
+            msg.includes('enotfound') ||
+            msg.includes('unable to connect') ||
+            msg.includes('fetch failed') ||
+            msg.includes('no nodes are available') ||
+            msg.includes('connectionrefused') ||
+            msg.includes('there was an error while making node request')
+        ) {
+            return true;
+        }
+        current = current.cause;
+    }
+    return false;
+}
+
+async function resolveWithRetry(
+    client: any,
+    query: string,
+    requester: string,
+    nodeManager: ReturnType<typeof getLavalinkManager>
+): Promise<any> {
+    const maxAttempts = 3;
+    let lastErr: any;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+            return await client.riffy.resolve({ query, requester });
+        } catch (err) {
+            lastErr = err;
+            if (!isLavalinkConnectionError(err)) throw err;
+            console.warn(`[ RiffY ] Resolve attempt ${attempt + 1}/${maxAttempts} failed for "${query}": ${String((err as any)?.message || err)}`);
+            if (attempt < maxAttempts - 1) {
+                await nodeManager?.reconnectNodesNow?.(4000).catch(() => {});
+                await new Promise((r) => setTimeout(r, 1500));
+            }
+        }
+    }
+    throw lastErr;
+}
+
 const data = new SlashCommandBuilder()
   .setName("play")
   .setDescription("Play a song from a name or link")
@@ -203,16 +255,22 @@ export default {
             } else {
                 let resolve: any;
                 try {
-                    resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
+                    resolve = await resolveWithRetry(client, query, interaction.user.username, nodeManager);
                 } catch (err: any) {
-                    const msg = err?.message || '';
-                    if (msg.includes('fetch failed') || msg.includes('No nodes are available') || (err.cause && err.cause.code === 'ECONNREFUSED')) {
-                        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
-                        await nodeManager.ensureNodeAvailable();
-                        resolve = await client.riffy.resolve({ query, requester: interaction.user.username });
-                    } else {
-                        throw err;
+                    if (isLavalinkConnectionError(err)) {
+                        const nodeCount = nodeManager.getNodeCount();
+                        const totalCount = nodeManager.getTotalNodeCount();
+                        return sendErrorResponse(
+                            interaction,
+                            t.noNodes.title + '\n\n' +
+                            t.noNodes.message
+                                .replace('{connected}', nodeCount)
+                                .replace('{total}', totalCount) + '\n' +
+                            t.noNodes.note,
+                            5000
+                        );
                     }
+                    throw err;
                 }
 
                 if (!resolve || typeof resolve !== 'object' || !Array.isArray(resolve.tracks)) {
@@ -257,7 +315,7 @@ export default {
             for (let i = 0; i < Math.min(tracksToQueue.length, maxTracks); i++) {
                 const trackQuery = tracksToQueue[i];
                 try {
-                    const resolve: any = await client.riffy.resolve({ query: trackQuery, requester: interaction.user.username });
+                    const resolve: any = await resolveWithRetry(client, trackQuery, interaction.user.username, nodeManager);
                     if (resolve && resolve.tracks && resolve.tracks.length > 0) {
                         if (player.queue.length >= MAX_QUEUE_SIZE) break;
                         const trackInfo = resolve.tracks[0];
@@ -266,6 +324,10 @@ export default {
                         queuedTracks++;
                     }
                 } catch (error) {
+                    if (isLavalinkConnectionError(error)) {
+                        console.error(`Error resolving track ${trackQuery}: Lavalink node unreachable, stopping playlist import.`);
+                        break;
+                    }
                     console.error(`Error resolving track ${trackQuery}:`, error);
                 }
             }
