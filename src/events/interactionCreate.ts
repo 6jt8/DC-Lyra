@@ -1,7 +1,7 @@
 import { InteractionType, MessageFlags } from "discord.js";
 import { colors } from "../ui/colors.js";
 import { getLang, getLangSync } from "../utils/language.js";
-import { safeDeferUpdate } from "../ui/responseHandler.js";
+import { safeDeferUpdate, sanitizeMentions } from "../ui/responseHandler.js";
 import { checkRateLimit } from "../utils/rateLimit.js";
 
 export async function handleInteractionCreate(client: any, interaction: any) {
@@ -60,9 +60,10 @@ export async function handleInteractionCreate(client: any, interaction: any) {
           error
         );
 
+        const safeMessage = sanitizeMentions(error.message || "Unknown error");
         const errorMessage = lang.events.interactionCreate.errorOccurred.replace(
           "{message}",
-          error.message
+          safeMessage
         );
 
         if (interaction.replied || interaction.deferred) {
