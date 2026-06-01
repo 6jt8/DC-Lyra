@@ -5,14 +5,14 @@ import path from "path";
 import express from "express";
 import { GatewayDispatchEvents } from "discord.js";
 import { initializePlayer } from "./music/player.js";
-import { connectToDatabase } from "./database/database.js";
+import { isConnected } from "./database/manager.js";
 import { colors } from "./ui/colors.js";
 import { getLavalinkManager } from "./music/lavalink.js";
 import { getLang, getLangSync } from "./utils/language.js";
-import { setClient } from "./emoji/emoji.js";
+import { setClient, getAllAvailableEmojis } from "./emoji/emoji.js";
 import { cleanupTrackMessages } from "./music/player-cleanup.js";
 import { guildTrackMessages, nowPlayingMessages, progressUpdateIntervals, interactionCollectors } from "./music/player-store.js";
-import { stopCollector } from "./music/player-interaction.js";
+import { stopCollector, restartCollector } from "./music/player-store.js";
 
 const client = new LyraClient();
 
@@ -141,7 +141,6 @@ client.on("clientReady", async () => {
 
   setClient(client);
 
-  const { getAllAvailableEmojis } = require("./emoji/emoji");
   const emojiInfo = getAllAvailableEmojis();
   console.log(
     `${colors.cyan}[ EMOJI ]${colors.reset} ${colors.yellow}Auto-detected ${emojiInfo.fromKeyMapping.length} emoji mappings${colors.reset}`
@@ -336,27 +335,17 @@ client.login(config.token || process.env.TOKEN).catch((e: Error) => {
   );
 });
 
-connectToDatabase()
-  .then(() => {
-    const lang = getLangSync();
-    console.log(
-      `${colors.cyan}[ DATABASE ]${colors.reset} ${colors.green}${lang.console?.bot?.databaseOnline || "Database Online ✅"}${colors.reset}`
-    );
-  })
-  .catch((err: Error) => {
-    const lang = getLangSync();
-    console.log("\n" + "─".repeat(40));
-    console.log(
-      `${colors.magenta}${colors.bright}${lang.console?.bot?.databaseStatus || "🕸️  DATABASE STATUS"}${colors.reset}`
-    );
-    console.log("─".repeat(40));
-    console.log(
-      `${colors.cyan}[ DATABASE ]${colors.reset} ${colors.red}${lang.console?.bot?.databaseFailed || "Connection Failed ❌"}${colors.reset}`
-    );
-    console.log(
-      `${colors.gray}${lang.console?.bot?.databaseError?.replace("{message}", err.message) || `Error: ${err.message}`}${colors.reset}`
-    );
-  });
+// Log database status (initialized in index.ts)
+if (isConnected()) {
+  const lang = getLangSync();
+  console.log(
+    `${colors.cyan}[ DATABASE ]${colors.reset} ${colors.green}${lang.console?.bot?.databaseOnline || "Database Online ✅"}${colors.reset}`
+  );
+} else {
+  console.log(
+    `${colors.cyan}[ DATABASE ]${colors.reset} ${colors.yellow}Running without database${colors.reset}`
+  );
+}
 
 const app = express();
 const port = config.port || process.env.PORT || 3000;
