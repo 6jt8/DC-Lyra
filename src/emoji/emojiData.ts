@@ -1,7 +1,7 @@
 import path from "path";
 import { config } from "../config.js";
 
-export const LOCAL_EMOJI_PATH = path.resolve(process.cwd(), config.applicationEmojis.emojiDir || "./icoms");
+export const LOCAL_EMOJI_PATH = path.resolve(process.cwd(), config.applicationEmojis?.emojiDir || "./icoms");
 
 interface EmojiEntry {
   name: string;

@@ -23,8 +23,16 @@ export class EmojiUploader {
 
   getLocalEmojiFiles(): string[] {
     try {
+      if (!fs.existsSync(this.iconsPath)) {
+        console.warn(`${colors.yellow}[ EMOJI ]${colors.reset} Emoji folder not found: ${this.iconsPath}`);
+        return [];
+      }
       const files = fs.readdirSync(this.iconsPath);
-      return files.filter((file) => file.endsWith(".png"));
+      return files.filter((file) =>
+        [".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"].includes(
+          path.extname(file).toLowerCase()
+        )
+      );
     } catch (error: any) {
       console.error(
         `${colors.red}Error reading icoms folder:${colors.reset}`,
@@ -34,11 +42,25 @@ export class EmojiUploader {
     }
   }
 
+  private getMimeType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".avif": "image/avif",
+    };
+    return mimeTypes[ext] || "image/png";
+  }
+
   private fileToDataUri(filePath: string): string | null {
     try {
       const fileBuffer = fs.readFileSync(filePath);
       const base64 = fileBuffer.toString("base64");
-      return `data:image/png;base64,${base64}`;
+      const mime = this.getMimeType(filePath);
+      return `data:${mime};base64,${base64}`;
     } catch (error: any) {
       console.error(
         `${colors.red}Error reading file ${filePath}:${colors.reset}`,
@@ -49,7 +71,8 @@ export class EmojiUploader {
   }
 
   private getEmojiName(filename: string): string {
-    let name = filename.replace(".png", "");
+    const ext = path.extname(filename);
+    let name = filename.replace(ext, "");
 
     if (name.startsWith("s") && name.length > 1) {
       name = name.substring(1);
@@ -162,15 +185,18 @@ export class EmojiUploader {
     let failed = 0;
 
     for (const file of files) {
+      const emojiName = this.getEmojiName(file);
+      const alreadyExists = this.uploadedEmojis.has(emojiName);
+
       const result = await this.uploadEmoji(file);
 
       if (result) {
-        if (this.uploadedEmojis.has(this.getEmojiName(file))) {
-          if (result.id) {
-            uploaded++;
-          } else {
-            skipped++;
-          }
+        if (alreadyExists && result.id) {
+          skipped++;
+        } else if (result.id) {
+          uploaded++;
+        } else {
+          failed++;
         }
       } else {
         failed++;

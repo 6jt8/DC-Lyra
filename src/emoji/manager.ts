@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { Client } from "discord.js";
+import { config } from "../config.js";
 import { colors } from "../ui/colors.js";
+import { EmojiUploader } from "./uploader.js";
 
 interface ManagerConfig {
   emojiDir?: string;
@@ -366,5 +368,33 @@ export class ApplicationEmojiManager {
 
   isEmojiAvailable(name: string): boolean {
     return Boolean(this.emojiCache[name]?.id);
+  }
+
+  async uploadEmojis(): Promise<Map<string, any>> {
+    const uploader = new EmojiUploader(this.client);
+    const result = await uploader.uploadAllEmojis();
+    
+    // Refresh cache after upload
+    for (const [name, emoji] of result.entries()) {
+      if (emoji?.id) {
+        const filePath = path.join(this.emojiDir, emoji.name + ".png");
+        this.emojiCache[name] = {
+          id: emoji.id,
+          hash: fs.existsSync(filePath) ? this.sha256(filePath) : "",
+          file: emoji.name + ".png",
+          animated: Boolean(emoji.animated),
+        };
+      }
+    }
+    this.saveJson(this.cacheFile, this.emojiCache);
+    
+    return result;
+  }
+
+  async deleteAllEmojis(): Promise<void> {
+    const uploader = new EmojiUploader(this.client);
+    await uploader.deleteAllEmojis();
+    this.emojiCache = {};
+    this.saveJson(this.cacheFile, this.emojiCache);
   }
 }

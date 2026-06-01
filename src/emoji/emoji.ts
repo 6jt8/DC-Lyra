@@ -262,33 +262,6 @@ export function getEmojiAttachment(key: string): any {
   return new AttachmentBuilder(filePath, { name: fileName });
 }
 
-export function getEmojiAttachments(keys: string[]): any[] {
-  const attachments: any[] = [];
-  const seen = new Set<string>();
-
-  for (const key of keys) {
-    const filePath = getEmojiFilePath(key);
-    if (filePath && !seen.has(filePath)) {
-      seen.add(filePath);
-      attachments.push(getEmojiAttachment(key));
-    }
-  }
-
-  return attachments.filter(Boolean);
-}
-
-export function hasDiscordEmoji(key: string): boolean {
-  const entry = EMOJIS[key];
-  if (!entry) return false;
-
-  const custom = resolveCustomEntry(entry);
-  return !!(custom?.name && custom?.id);
-}
-
-export function hasLocalFile(key: string): boolean {
-  return !!getEmojiFilePath(key);
-}
-
 export function getAllAvailableEmojis(): any {
   const available = {
     fromEmojiData: Object.keys(EMOJIS),
@@ -309,15 +282,4 @@ export function getAllAvailableEmojis(): any {
   (available as any).allKeys = Array.from(allKeys).sort();
 
   return available;
-}
-
-export function refreshEmojiMappings(): Record<string, string> {
-  const newMapping = buildKeyToNameMapping();
-  Object.keys(KEY_TO_NAME_MAP).forEach((key) => delete KEY_TO_NAME_MAP[key]);
-  Object.assign(KEY_TO_NAME_MAP, newMapping);
-
-  console.log(
-    `[ EMOJI ] Refreshed mappings: ${Object.keys(KEY_TO_NAME_MAP).length} emoji keys available`
-  );
-  return KEY_TO_NAME_MAP;
 }
