@@ -24,11 +24,14 @@ export default {
             const enable = interaction.options.getBoolean('enable');
             const guildId = interaction.guild.id;
 
-            await getAutoplayCollection()?.updateOne(
-                { guildId },
-                { $set: { autoplay: enable } },
-                { upsert: true }
-            );
+            const col = getAutoplayCollection();
+            const existing = await col.findOne({ guildId });
+            
+            if (existing) {
+              await col.updateOne({ guildId }, { autoplay: enable });
+            } else {
+              await col.insertOne({ guildId, autoplay: enable, twentyfourseven: false });
+            }
 
             const content = enable 
                 ? t.enabled.title + '\n\n' + t.enabled.message + '\n\n' + t.enabled.note

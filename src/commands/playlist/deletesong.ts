@@ -39,7 +39,14 @@ export default {
                 );
             }
 
-            await (getPlaylistCollection()! as any).updateOne({ name: playlistName }, { $pull: { songs: { name: songName } } });
+            // Get current songs array and remove the song by name
+            const currentSongs = playlist.songs || [];
+            const updatedSongs = currentSongs.filter((s: any) => s.name !== songName);
+            
+            await getPlaylistCollection()!.updateOne(
+                { name: playlistName },
+                { songs: updatedSongs }
+            );
             
             return sendSuccessResponse(
                 interaction,

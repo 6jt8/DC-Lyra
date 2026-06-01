@@ -1,20 +1,12 @@
 import { MessageFlags } from "discord.js";
 import { getLang } from "./language.js";
 import { cardFromMessage } from "../ui/responseHandler.js";
-import fs from "fs";
-import path from "path";
 
 export async function checkVoiceChannel(
   interaction: any,
   player: any
 ): Promise<{ allowed: boolean; response?: any }> {
-  const lang = await getLang(interaction.guildId).catch(() => {
-    const jsPath = path.join(__dirname, "../../languages/en.js");
-    const tsPath = path.join(__dirname, "../../languages/en.ts");
-    const resolved = fs.existsSync(jsPath) ? jsPath : tsPath;
-    const m = require(resolved);
-    return m.default || m;
-  });
+  const lang = await getLang(interaction.guildId).catch(() => ({ utils: {} }));
 
   const utils = lang?.utils || {};
   const voiceCheck = utils?.voiceChannelCheck || {

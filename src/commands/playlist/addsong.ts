@@ -59,9 +59,13 @@ export default {
                 song = { name: songInput };
             }
 
+            // Get current songs array and append new song
+            const currentSongs = playlist.songs || [];
+            const updatedSongs = [...currentSongs, song];
+            
             await getPlaylistCollection()!.updateOne(
                 { name: playlistName },
-                { $push: { songs: song } }
+                { songs: updatedSongs }
             );
 
             return sendSuccessResponse(

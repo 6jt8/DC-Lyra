@@ -38,11 +38,14 @@ export default {
             const enable = interaction.options.getBoolean('enable');
             const guildId = interaction.guild.id;
 
-            await getAutoplayCollection()?.updateOne(
-                { guildId },
-                { $set: { twentyfourseven: enable } },
-                { upsert: true }
-            );
+            const col = getAutoplayCollection();
+            const existing = await col.findOne({ guildId });
+            
+            if (existing) {
+              await col.updateOne({ guildId }, { twentyfourseven: enable });
+            } else {
+              await col.insertOne({ guildId, autoplay: false, twentyfourseven: enable });
+            }
 
             const statusText = enable
                 ? `${lang.utility.twentyfourseven.enabled.title}\n\n${lang.utility.twentyfourseven.enabled.message}\n\n${lang.utility.twentyfourseven.enabled.note}`
