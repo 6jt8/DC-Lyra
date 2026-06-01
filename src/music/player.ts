@@ -18,6 +18,7 @@ import {
   progressUpdateIntervals,
   guildActiveFilter,
   getCommandMentionMap,
+  stopCollector,
 } from "./player-store.js";
 import {
   buildNowPlayingContainer,
@@ -378,18 +379,25 @@ export async function initializePlayer(client: any): Promise<void> {
 
     if (dbConnected && config.lowMemoryMode !== true) {
       try {
-        await (getPlaylistCollection() as any)?.updateOne(
-          { guildId, name: "__HISTORY__" },
-          {
-            $push: {
-              songs: {
-                $each: [trackUri],
-                $slice: -100,
-              },
-            },
-          },
-          { upsert: true }
-        );
+        const col = getPlaylistCollection()!;
+        const playlist = await col.findOne({ guildId, name: "__HISTORY__" });
+        
+        if (playlist) {
+          // Get current songs, append new one, keep only last 100
+          const currentSongs = playlist.songs || [];
+          const updatedSongs = [...currentSongs, trackUri].slice(-100);
+          await col.updateOne(
+            { guildId, name: "__HISTORY__" },
+            { songs: updatedSongs }
+          );
+        } else {
+          // Create new history playlist
+          await col.insertOne({
+            guildId,
+            name: "__HISTORY__",
+            songs: [trackUri],
+          });
+        }
       } catch (error) {
         const lang = getLangSync();
         console.error(
@@ -484,11 +492,53 @@ export async function initializePlayer(client: any): Promise<void> {
       );
       const components = [nowPlayingContainer];
 
-      const message = await sendMessageWithPermissionsCheck(
-        channel,
-        components,
-        canAttachFiles ? attachment : null
-      );
+      const existingStored = nowPlayingMessages.get(guildId);
+      let message = null;
+
+      if (existingStored) {
+        const existingChannel = client.channels.cache.get(existingStored.channelId);
+        if (existingChannel) {
+          const existingMsg = await existingChannel.messages
+            .fetch(existingStored.messageId)
+            .catch(() => null);
+          if (existingMsg) {
+            stopCollector(guildId);
+            const oldInterval = progressUpdateIntervals.get(guildId);
+            if (oldInterval) {
+              clearInterval(oldInterval);
+              progressUpdateIntervals.delete(guildId);
+            }
+            const editPayload: any = {
+              components,
+              flags: MessageFlags.IsComponentsV2,
+            };
+            if (canAttachFiles && attachment) {
+              editPayload.files = [attachment];
+            }
+            await existingMsg.edit(editPayload).catch(() => {});
+            message = existingMsg;
+          }
+        }
+      }
+
+      if (!message) {
+        if (existingStored) {
+          const oldChannel = client.channels.cache.get(existingStored.channelId);
+          if (oldChannel) {
+            const oldMsg = await oldChannel.messages
+              .fetch(existingStored.messageId)
+              .catch(() => null);
+            if (oldMsg) {
+              await oldMsg.delete().catch(() => {});
+            }
+          }
+        }
+        message = await sendMessageWithPermissionsCheck(
+          channel,
+          components,
+          canAttachFiles ? attachment : null
+        );
+      }
 
       if (!message) {
         const langSync = getLangSync();

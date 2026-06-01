@@ -1,3 +1,5 @@
+import { getEmoji } from "../emoji/emoji.js";
+
 export const guildTrackMessages = new Map<string, any[]>();
 export const nowPlayingMessages = new Map<string, any>();
 export const progressUpdateIntervals = new Map<string, any>();
@@ -53,7 +55,6 @@ export function getCommandRef(
 export function buildRandomTryHint(
   mentionMap: Map<string, string>
 ): string {
-  const { getEmoji } = require("../emoji/emoji");
   const searchIcon = getEmoji("search") || "🔎";
   const pool = [
     "play",
@@ -82,3 +83,24 @@ export function buildRandomTryHint(
 
 export const PLAYER_FAVORITES_NAME = "AutoFavourites";
 export const LEGACY_PLAYER_FAVORITES_NAME = "__FAVORITES__";
+
+export function stopCollector(guildId: string): void {
+  const collector = interactionCollectors.get(guildId);
+  if (collector) {
+    collector.stop();
+    interactionCollectors.delete(guildId);
+  }
+}
+
+export async function restartCollector(
+  client: any,
+  guildId: string,
+  channel: any,
+  message: any
+): Promise<any> {
+  stopCollector(guildId);
+  const player = client.riffy?.players?.get(guildId);
+  if (!player || player.destroyed) return null;
+  const { setupCollector } = await import("./player-interaction.js");
+  return setupCollector(client, player, channel, message);
+}

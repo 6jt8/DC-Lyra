@@ -437,17 +437,8 @@ export async function sendMessageWithPermissionsCheck(
         components: fallbackComponents,
         flags: MessageFlags.IsComponentsV2,
       };
-      try {
-        const message = await channel.send(fallbackOptions);
-        return message;
-      } catch (_) {
-        const minimalOptions = {
-          components: fallbackComponents,
-          flags: MessageFlags.IsComponentsV2,
-        };
-        const message = await channel.send(minimalOptions);
-        return message;
-      }
+      const message = await channel.send(fallbackOptions);
+      return message;
     }
   } catch (error: any) {
     const langSync = getLangSync();
