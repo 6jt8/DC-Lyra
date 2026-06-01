@@ -10,6 +10,8 @@ import {
   PLAYER_FAVORITES_NAME,
   LEGACY_PLAYER_FAVORITES_NAME,
   getCommandMentionMap,
+  progressUpdateIntervals,
+  requesters,
 } from "./player-store.js";
 import {
   sendEmbed,
@@ -20,10 +22,10 @@ import {
   getTrackMediaCache,
   setTrackMediaCache,
 } from "./player-ui.js";
-import { applyFilterByKey } from "./player-filters.js";
+import { stopCollector, restartCollector } from "./player-store.js";
 import { refreshNowPlayingPanel, cleanupTrackMessages } from "./player-cleanup.js";
+import { applyFilterByKey } from "./player-filters.js";
 import { getPlaylistCollection } from "../database/database.js";
-import { AttachmentBuilder, PermissionsBitField } from "discord.js";
 
 export function setupCollector(
   client: any,
@@ -152,24 +154,17 @@ export function setupCollector(
   return collector;
 }
 
-export function stopCollector(guildId: string): void {
-  const collector = interactionCollectors.get(guildId);
-  if (collector) {
-    collector.stop();
-    interactionCollectors.delete(guildId);
-  }
-}
-
-export function restartCollector(
-  client: any,
-  guildId: string,
-  channel: any,
-  message: any
-): any {
-  stopCollector(guildId);
-  const player = client.riffy?.players?.get(guildId);
-  if (!player || player.destroyed) return null;
-  return setupCollector(client, player, channel, message);
+async function sendEphemeralReply(
+  interaction: any,
+  message: string
+): Promise<void> {
+  const container = cardFromMessage(message, "Player Update");
+  try {
+    await interaction.reply({
+      components: [container],
+      flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+    });
+  } catch (_) {}
 }
 
 async function handleInteraction(
@@ -182,25 +177,27 @@ async function handleInteraction(
     console: { player: {} },
   }));
   const t = lang.console?.player || {};
+  const guildId = player.guildId;
 
   switch (i.customId) {
     case "loopToggle": {
-      toggleLoop(player, channel, t);
-      await refreshNowPlayingPanel(client, player.guildId);
+      const msg = toggleLoop(player, channel, t);
+      await refreshNowPlayingPanel(client, guildId);
+      if (msg) await sendEphemeralReply(i, msg);
       break;
     }
     case "skipTrack": {
-      const guildId = player.guildId;
       clearProgressUpdates(guildId);
       player.stop();
-      await sendEmbed(
-        channel,
+      await sendEphemeralReply(
+        i,
         t.controls?.skip || "⏭️ **Skipping to next song...**"
       );
       break;
     }
     case "disableLoop": {
       disableLoop(player, channel, t);
+      await refreshNowPlayingPanel(client, guildId);
       break;
     }
     case "showLyrics": {
@@ -210,19 +207,20 @@ async function handleInteraction(
     }
     case "clearQueue": {
       player.queue.clear();
-      await sendEmbed(
-        channel,
+      await refreshNowPlayingPanel(client, guildId);
+      await sendEphemeralReply(
+        i,
         t.controls?.queueCleared || "🗑️ **Queue has been cleared!**"
       );
       break;
     }
     case "stopTrack": {
       await cleanupTrackMessages(client, player);
-      client.statusManager?.onPlayerDisconnect(player.guildId);
+      client.statusManager?.onPlayerDisconnect(guildId);
       player.stop();
       player.destroy();
-      await sendEmbed(
-        channel,
+      await sendEphemeralReply(
+        i,
         t.controls?.playbackStopped ||
           "⏹️ **Playback has been stopped and player destroyed!**"
       );
@@ -231,36 +229,33 @@ async function handleInteraction(
     case "togglePlayback": {
       try {
         if (!player || player.destroyed) {
-          await sendEmbed(
-            channel,
-            t.controls?.playerDestroyed ||
-              "❌ **Player is not available!**"
+          await sendEphemeralReply(
+            i,
+            t.controls?.playerDestroyed || "❌ **Player is not available!**"
           );
           return;
         }
         if (player.paused) {
           player.pause(false);
-          await sendEmbed(
-            channel,
-            t.controls?.playbackResumed ||
-              "▶️ **Playback has been resumed!**"
+          await sendEphemeralReply(
+            i,
+            t.controls?.playbackResumed || "▶️ **Playback has been resumed!**"
           );
         } else {
           player.pause(true);
-          await sendEmbed(
-            channel,
-            t.controls?.playbackPaused ||
-              "⏸️ **Playback has been paused!**"
+          await sendEphemeralReply(
+            i,
+            t.controls?.playbackPaused || "⏸️ **Playback has been paused!**"
           );
         }
-        await refreshNowPlayingPanel(client, player.guildId);
+        await refreshNowPlayingPanel(client, guildId);
       } catch (error: any) {
         const langSync = getLangSync();
         console.warn(
           `${colors.cyan}[ PLAYER ]${colors.reset} ${colors.yellow}Toggle playback error: ${error.message}${colors.reset}`
         );
-        await sendEmbed(
-          channel,
+        await sendEphemeralReply(
+          i,
           t.controls?.resumeError ||
             "⚠️ **Failed to change playback state. Please try again.**"
         );
@@ -271,10 +266,7 @@ async function handleInteraction(
       try {
         const current = player.current?.info;
         if (!current?.uri) {
-          await sendEmbed(
-            channel,
-            "❌ **No active song to favorite.**"
-          );
+          await sendEphemeralReply(i, "❌ **No active song to favorite.**");
           return;
         }
 
@@ -298,7 +290,7 @@ async function handleInteraction(
           if (legacy) {
             await getPlaylistCollection()!.updateOne(
               { _id: legacy._id },
-              { $set: { name: playlistName, isPrivate: true } }
+              { name: playlistName, isPrivate: true }
             );
             existing = await getPlaylistCollection()!.findOne({
               _id: legacy._id,
@@ -317,18 +309,23 @@ async function handleInteraction(
           });
         }
 
+        const col = getPlaylistCollection()!;
+        const playlist = await col.findOne({ name: playlistName, userId, serverId });
+        const currentSongs = playlist?.songs || [];
         const songEntry = { url: current.uri };
-        await getPlaylistCollection()!.updateOne(
-          { name: playlistName, userId, serverId },
-          { $addToSet: { songs: songEntry } }
-        );
 
-        await sendEmbed(channel, "✅ **Added to Favorites.**");
+        const exists = currentSongs.some((s: any) => s.url === songEntry.url);
+        if (!exists) {
+          const updatedSongs = [...currentSongs, songEntry];
+          await col.updateOne(
+            { name: playlistName, userId, serverId },
+            { songs: updatedSongs }
+          );
+        }
+
+        await sendEphemeralReply(i, "✅ **Added to Favorites.**");
       } catch (error) {
-        await sendEmbed(
-          channel,
-          "⚠️ **Failed to add favorite.**"
-        );
+        await sendEphemeralReply(i, "⚠️ **Failed to add favorite.**");
       }
       break;
     }
@@ -336,37 +333,34 @@ async function handleInteraction(
       const selectedFilter = i.values?.[0];
       if (selectedFilter === "__clear__") {
         player.filters.clearFilters();
-        guildActiveFilter.delete(player.guildId);
-        await refreshNowPlayingPanel(client, player.guildId);
-        await sendEmbed(channel, "🧹 **Filters cleared.**");
+        guildActiveFilter.delete(guildId);
+        await refreshNowPlayingPanel(client, guildId);
+        await sendEphemeralReply(i, "🧹 **Filters cleared.**");
         break;
       }
       const applied = await applyFilterByKey(player, selectedFilter);
       if (!applied) {
-        await sendEmbed(
-          channel,
-          "⚠️ **Invalid filter selection.**"
-        );
+        await sendEphemeralReply(i, "⚠️ **Invalid filter selection.**");
         return;
       }
-      guildActiveFilter.set(player.guildId, selectedFilter);
-      await refreshNowPlayingPanel(client, player.guildId);
-      await sendEmbed(
-        channel,
+      guildActiveFilter.set(guildId, selectedFilter);
+      await refreshNowPlayingPanel(client, guildId);
+      await sendEphemeralReply(
+        i,
         `🎛️ **Filter applied:** ${selectedFilter}`
       );
       break;
     }
     case "player_filter_clear": {
       player.filters.clearFilters();
-      guildActiveFilter.delete(player.guildId);
-      await refreshNowPlayingPanel(client, player.guildId);
-      await sendEmbed(channel, "🧹 **Filters cleared.**");
+      guildActiveFilter.delete(guildId);
+      await refreshNowPlayingPanel(client, guildId);
+      await sendEphemeralReply(i, "🧹 **Filters cleared.**");
       break;
     }
     case "player_queue": {
       if (!player.queue.length) {
-        await sendEmbed(channel, "📭 **Queue is empty.**");
+        await sendEphemeralReply(i, "📭 **Queue is empty.**");
         return;
       }
       const preview = player.queue
@@ -376,33 +370,35 @@ async function handleInteraction(
             `${index + 1}. ${item.info?.title || "Unknown title"}`
         )
         .join("\n");
-      await sendEmbed(
-        channel,
+      await sendEphemeralReply(
+        i,
         `📄 **Upcoming Queue**\n\n${preview}`
       );
       break;
     }
     case "player_shuffle": {
       if (player.queue.length < 2) {
-        await sendEmbed(
-          channel,
+        await sendEphemeralReply(
+          i,
           "🔀 **Need at least 2 songs in queue to shuffle.**"
         );
         return;
       }
       player.queue.shuffle();
-      await refreshNowPlayingPanel(client, player.guildId);
-      await sendEmbed(channel, "🔀 **Queue shuffled.**");
+      await refreshNowPlayingPanel(client, guildId);
+      await sendEphemeralReply(i, "🔀 **Queue shuffled.**");
       break;
     }
     case "volumeUp": {
-      adjustVolume(player, channel, 10, t);
-      await refreshNowPlayingPanel(client, player.guildId);
+      const msg = adjustVolume(player, channel, 10, t);
+      await refreshNowPlayingPanel(client, guildId);
+      await sendEphemeralReply(i, msg);
       break;
     }
     case "volumeDown": {
-      adjustVolume(player, channel, -10, t);
-      await refreshNowPlayingPanel(client, player.guildId);
+      const msg = adjustVolume(player, channel, -10, t);
+      await refreshNowPlayingPanel(client, guildId);
+      await sendEphemeralReply(i, msg);
       break;
     }
   }
@@ -445,7 +441,6 @@ async function handlePlayerModalSubmit(
         return;
       }
 
-      const { requesters } = await import("./player-store.js");
       let added = 0;
       if (resolve.loadType === "playlist") {
         for (const track of resolve.tracks) {
@@ -541,10 +536,20 @@ async function handlePlayerModalSubmit(
         });
       }
 
-      await getPlaylistCollection()!.updateOne(
-        { name: playlistName, userId, serverId },
-        { $addToSet: { songs: { url: current.uri } } }
-      );
+      // Get current songs and add new song (avoid duplicates)
+        const col = getPlaylistCollection()!;
+        const playlist = await col.findOne({ name: playlistName, userId, serverId });
+        const currentSongs = playlist?.songs || [];
+        const songEntry = { url: current.uri };
+        
+        const exists = currentSongs.some((s: any) => s.url === songEntry.url);
+        if (!exists) {
+          const updatedSongs = [...currentSongs, songEntry];
+          await col.updateOne(
+            { name: playlistName, userId, serverId },
+            { songs: updatedSongs }
+          );
+        }
 
       await modal
         .editReply({
@@ -559,42 +564,33 @@ async function handlePlayerModalSubmit(
   }
 }
 
-async function adjustVolume(
+function adjustVolume(
   player: any,
   channel: any,
   amount: number,
   t: any = {}
-): Promise<void> {
+): string {
   const newVolume = Math.min(
     100,
     Math.max(10, player.volume + amount)
   );
   if (newVolume === player.volume) {
-    await sendEmbed(
-      channel,
-      amount > 0
-        ? t.controls?.volumeMax ||
-            "🔊 **Volume is already at maximum!**"
-        : t.controls?.volumeMin ||
-            "🔉 **Volume is already at minimum!**"
-    );
+    return amount > 0
+      ? t.controls?.volumeMax || "🔊 **Volume is already at maximum!**"
+      : t.controls?.volumeMin || "🔉 **Volume is already at minimum!**";
   } else {
     player.setVolume(newVolume);
-    await sendEmbed(
-      channel,
-      (
-        t.controls?.volumeChanged ||
-        "🔊 **Volume changed to {volume}%!**"
-      ).replace("{volume}", newVolume)
-    );
+    return (
+      t.controls?.volumeChanged || "🔊 **Volume changed to {volume}%!**"
+    ).replace("{volume}", String(newVolume));
   }
 }
 
-async function toggleLoop(
+function toggleLoop(
   player: any,
   channel: any,
   t: any = {}
-): Promise<void> {
+): string | null {
   const currentMode = player.loop || "none";
   const nextMode =
     currentMode === "none"
@@ -606,41 +602,24 @@ async function toggleLoop(
   player.setLoop(nextMode);
 
   if (nextMode === "track") {
-    await sendEmbed(
-      channel,
-      t.controls?.trackLoopActivated ||
-        "🔁 **Track loop is activated!**"
-    );
+    return t.controls?.trackLoopActivated || "🔁 **Track loop is activated!**";
   } else if (nextMode === "queue") {
-    await sendEmbed(
-      channel,
-      t.controls?.queueLoopActivated ||
-        "🔁 **Queue loop is activated!**"
-    );
+    return t.controls?.queueLoopActivated || "🔁 **Queue loop is activated!**";
   } else {
-    await sendEmbed(
-      channel,
-      t.controls?.loopDisabled || "❌ **Loop is disabled!**"
-    );
+    return t.controls?.loopDisabled || "❌ **Loop is disabled!**";
   }
 }
 
-async function disableLoop(
+function disableLoop(
   player: any,
   channel: any,
   t: any = {}
-): Promise<void> {
+): string {
   player.setLoop("none");
-  await sendEmbed(
-    channel,
-    t.controls?.loopDisabled || "❌ **Loop is disabled!**"
-  );
+  return t.controls?.loopDisabled || "❌ **Loop is disabled!**";
 }
 
 function clearProgressUpdates(guildId: string): void {
-  const {
-    progressUpdateIntervals,
-  } = require("./player-store");
   const intervalId = progressUpdateIntervals.get(guildId);
   if (intervalId) {
     clearInterval(intervalId);

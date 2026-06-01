@@ -1,4 +1,4 @@
-import { AttachmentBuilder, PermissionsBitField, MessageFlags } from "discord.js";
+import { AttachmentBuilder, MessageFlags, PermissionsBitField } from "discord.js";
 import { getLang } from "../utils/language.js";
 import { requesters } from "./player-store.js";
 import {
@@ -12,13 +12,12 @@ import {
 import {
   buildNowPlayingContainer,
   buildPlayerActionRows,
-  setTrackMediaCache,
   getTrackMediaCache,
   clearTrackMediaCache,
   createProgressBar,
   sendMessageWithPermissionsCheck,
 } from "./player-ui.js";
-import { stopCollector, restartCollector } from "./player-interaction.js";
+import { stopCollector, restartCollector } from "./player-store.js";
 import { config } from "../config.js";
 
 export async function cleanupTrackMessages(
@@ -241,39 +240,9 @@ export async function editNowPlayingPanel(
     .catch(() => null);
   if (!msg) return;
 
-  const canAttachFiles = channel.permissionsFor(
-    channel.guild.members.me
-  )?.has(PermissionsBitField.Flags.AttachFiles);
-  const useGeneratedSongCard = config.generateSongCard !== false;
-  const cachedMedia = useGeneratedSongCard
-    ? getTrackMediaCache(guildId, track.info.uri)
-    : null;
-
-  let mediaUrl: string | null = null;
-  let mediaAttachment: any = null;
-
-  if (useGeneratedSongCard) {
-    if (cachedMedia?.cardBuffer && canAttachFiles) {
-      mediaAttachment = new AttachmentBuilder(
-        cachedMedia.cardBuffer,
-        { name: "song-banner.png" }
-      );
-      mediaUrl = "attachment://song-banner.png";
-    } else if (cachedMedia?.mediaUrl) {
-      mediaUrl = cachedMedia.mediaUrl;
-    }
-    if (!mediaUrl) {
-      mediaUrl = msg.attachments?.first()?.url || null;
-      if (mediaUrl) {
-        setTrackMediaCache(
-          guildId,
-          track.info.uri,
-          mediaUrl,
-          cachedMedia?.cardBuffer || null
-        );
-      }
-    }
-  }
+  const { mediaUrl, mediaAttachment } = await resolveMediaForGuild(
+    client, guildId, channel, track
+  );
 
   const payload = await buildNowPlayingPayload(
     client, guildId, player, track, mediaUrl, mediaAttachment
@@ -295,5 +264,38 @@ export async function refreshNowPlayingPanel(
   client: any,
   guildId: string
 ): Promise<void> {
-  await deleteAndSendNowPlaying(client, guildId);
+  const stored = nowPlayingMessages.get(guildId);
+  if (!stored) return;
+
+  const player = client.riffy.players.get(guildId);
+  if (!player || player.destroyed || !player.current) return;
+
+  const channel = client.channels.cache.get(stored.channelId);
+  if (!channel) return;
+
+  const msg = await channel.messages
+    .fetch(stored.messageId)
+    .catch(() => null);
+
+  if (msg) {
+    const track = player.current;
+    const { mediaUrl } = await resolveMediaForGuild(
+      client, guildId, channel, track
+    );
+    const payload = await buildNowPlayingPayload(
+      client, guildId, player, track, mediaUrl, null
+    );
+    if (!payload) return;
+
+    const editPayload: any = {
+      components: [payload.container],
+      flags: MessageFlags.IsComponentsV2,
+    };
+
+    await msg.edit(editPayload).catch(() => {
+      deleteAndSendNowPlaying(client, guildId).catch(() => {});
+    });
+  } else {
+    await deleteAndSendNowPlaying(client, guildId);
+  }
 }
