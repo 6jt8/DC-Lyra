@@ -89,11 +89,12 @@ export async function setGuildLanguage(
       return { success: false, error: "Language file not found" };
     }
 
-    await collection.updateOne(
-      { guildId },
-      { $set: { guildId, language: langCode } },
-      { upsert: true }
-    );
+    const existing = await collection.findOne({ guildId });
+    if (existing) {
+      await collection.updateOne({ guildId }, { language: langCode });
+    } else {
+      await collection.insertOne({ guildId, language: langCode });
+    }
 
     languageCache.delete(langCode);
     return { success: true };
@@ -200,8 +201,4 @@ export function getLangSync(): any {
   }
 
   return { console: {} };
-}
-
-export function clearLanguageCache(): void {
-  languageCache.clear();
 }
