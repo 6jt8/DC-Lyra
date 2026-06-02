@@ -67,8 +67,13 @@ export class Collection {
 
     for (const [k, v] of Object.entries(rest)) {
       columns.push(toSnake(k));
-      placeholders.push(`$${idx++}`);
-      vals.push(isPlainObject(v) || Array.isArray(v) ? JSON.stringify(v) : v);
+      if (isPlainObject(v) || Array.isArray(v)) {
+        placeholders.push(`$${idx++}::jsonb`);
+        vals.push(JSON.stringify(v));
+      } else {
+        placeholders.push(`$${idx++}`);
+        vals.push(v);
+      }
     }
 
     const rows = await this.db.query(
@@ -174,8 +179,13 @@ export class Collection {
     const vals: any[] = [];
     let idx = 1;
     for (const [k, v] of Object.entries(update)) {
-      clauses.push(`${toSnake(k)} = $${idx++}`);
-      vals.push(isPlainObject(v) || Array.isArray(v) ? JSON.stringify(v) : v);
+      if (isPlainObject(v) || Array.isArray(v)) {
+        clauses.push(`${toSnake(k)} = $${idx++}::jsonb`);
+        vals.push(JSON.stringify(v));
+      } else {
+        clauses.push(`${toSnake(k)} = $${idx++}`);
+        vals.push(v);
+      }
     }
     return { clauses, vals };
   }
