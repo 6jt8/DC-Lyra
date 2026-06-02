@@ -1,3 +1,13 @@
+declare module "better-sqlite3" {
+  class Database {
+    constructor(path: string);
+    pragma(source: string): void;
+    prepare(sql: string): { all: (...args: any[]) => any[]; run: (...args: any[]) => { changes: number } };
+    close(): void;
+  }
+  export default Database;
+}
+
 declare module "spotify-web-api-node" {
   interface SpotifyWebApiOptions {
     clientId?: string;
