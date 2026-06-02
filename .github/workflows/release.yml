@@ -1,0 +1,160 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse tag info
+        id: tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *"-release"* ]]; then
+            echo "type=Release" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == *"-nightly"* ]]; then
+            echo "type=Nightly" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=Release" >> "$GITHUB_OUTPUT"
+          fi
+          VERSION=$(echo "$TAG" | grep -oP '^v\d+\.\d+\.\d+' || echo "$TAG")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install 7zip
+        run: apt-get update && apt-get install -y p7zip-full
+
+      - name: Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          PREV_TAG=$(git tag --sort=-creatordate --list 'v*-release' | head -1 || true)
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE=$(git rev-list --max-count=1 HEAD)
+          fi
+          COMMITS=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Initial release")
+          MERGE_LOG=$(git log "$RANGE" --merges --pretty=format:"%s" 2>/dev/null || true)
+          SEEN_AUTHORS=()
+          AUTHORS_LIST=()
+          while IFS= read -r line; do
+            if echo "$line" | grep -qP 'Merge pull request #\d+ from [^/]+/'; then
+              AUTHOR=$(echo "$line" | grep -oP 'from \K[^/]+')
+              if [ -n "$AUTHOR" ] && [ "$AUTHOR" != "sayrox106" ] && ! echo "$AUTHOR" | grep -q '\['; then
+                ALREADY_SEEN=false
+                for S in "${SEEN_AUTHORS[@]}"; do
+                  if [ "$S" = "$AUTHOR" ]; then
+                    ALREADY_SEEN=true
+                    break
+                  fi
+                done
+                if [ "$ALREADY_SEEN" = false ]; then
+                  SEEN_AUTHORS+=("$AUTHOR")
+                  AUTHORS_LIST+=("$AUTHOR")
+                fi
+              fi
+            fi
+          done <<< "$MERGE_LOG"
+          NOTES="### What's Changed"
+          NOTES+=$'\n\n'"${COMMITS}"
+          NOTES+=$'\n'
+          NUM_AUTHORS=${#AUTHORS_LIST[@]}
+          if [ "$NUM_AUTHORS" -gt 0 ]; then
+            THANKS=""
+            for i in "${!AUTHORS_LIST[@]}"; do
+              AUTHOR="${AUTHORS_LIST[$i]}"
+              if [ "$i" -gt 0 ]; then
+                if [ "$i" -eq $((NUM_AUTHORS - 1)) ]; then
+                  THANKS+=", and "
+                else
+                  THANKS+=", "
+                fi
+              fi
+              THANKS+="[$AUTHOR](https://github.com/$AUTHOR)"
+            done
+            if [ "$NUM_AUTHORS" -eq 1 ]; then
+              NOTES+=$'\n\n'"**Big thanks to $THANKS for their contribution!**"
+            else
+              NOTES+=$'\n\n'"**Big thanks to $THANKS for their contributions!**"
+            fi
+          fi
+          echo "$NOTES" > changelog_body.txt
+
+      - name: Prepare dist archives
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          rm -rf "dist-package"
+          mkdir -p "dist-package"
+          cp -r dist "dist-package/dist"
+          cp package.json "dist-package/"
+          cp package-lock.json "dist-package/" 2>/dev/null || true
+          cp bun.lock "dist-package/" 2>/dev/null || true
+          cp .env.example "dist-package/"
+          cp tsconfig.json "dist-package/"
+          cd dist-package
+          zip -r "../lyra-music-${VERSION}-dist.zip" .
+          7z a "../lyra-music-${VERSION}-dist.7z" .
+          tar -czf "../lyra-music-${VERSION}-dist.tar.gz" .
+          cd ..
+
+      - name: Prepare source archives
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          rm -rf "src-package"
+          mkdir -p "src-package/src"
+          mkdir -p "src-package/languages"
+          mkdir -p "src-package/icoms"
+          cp -r src "src-package/src"
+          cp -r languages src-package/
+          cp -r icoms src-package/
+          cp package.json src-package/
+          cp package-lock.json src-package/ 2>/dev/null || true
+          cp bun.lock src-package/ 2>/dev/null || true
+          cp .env.example src-package/
+          cp tsconfig.json src-package/
+          cp index.html src-package/
+          cp README.md src-package/
+          cp LICENSE src-package/
+          cd src-package
+          zip -r "../lyra-music-${VERSION}-src.zip" .
+          7z a "../lyra-music-${VERSION}-src.7z" .
+          tar -czf "../lyra-music-${VERSION}-src.tar.gz" .
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ steps.tag.outputs.version }} | ${{ steps.tag.outputs.type }}"
+          body_path: changelog_body.txt
+          files: |
+            lyra-music-*-dist.zip
+            lyra-music-*-dist.7z
+            lyra-music-*-dist.tar.gz
+            lyra-music-*-src.zip
+            lyra-music-*-src.7z
+            lyra-music-*-src.tar.gz
+          draft: false
+          prerelease: ${{ steps.tag.outputs.type == 'Nightly' }}
