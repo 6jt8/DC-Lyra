@@ -106,9 +106,11 @@ export class Collection {
 
     if (setClauses.length === 0) return null;
 
+    const setCount = setVals.length;
+    const offsetWhereSql = whereSql.replace(/\$(\d+)/g, (_, d) => `$${parseInt(d) + setCount}`);
     const allVals = [...setVals, ...whereVals];
     await this.db.execute(
-      `UPDATE ${this.table} SET ${setClauses.join(", ")} WHERE ${whereSql}`,
+      `UPDATE ${this.table} SET ${setClauses.join(", ")} WHERE ${offsetWhereSql}`,
       allVals
     );
 
@@ -149,9 +151,11 @@ export class Collection {
 
     if (setClauses.length === 0) return before;
 
+    const setCount = setVals.length;
+    const offsetWhereSql = whereSql.replace(/\$(\d+)/g, (_, d) => `$${parseInt(d) + setCount}`);
     const allVals = [...setVals, ...whereVals];
     await this.db.execute(
-      `UPDATE ${this.table} SET ${setClauses.join(", ")} WHERE ${whereSql}`,
+      `UPDATE ${this.table} SET ${setClauses.join(", ")} WHERE ${offsetWhereSql}`,
       allVals
     );
 
