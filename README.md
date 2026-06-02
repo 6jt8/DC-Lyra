@@ -58,9 +58,9 @@
 
 <h2 align="center">✨ Features</h2>
 
-<table width="100%">
+<table align="center" width="100%">
   <tr>
-    <td width="50%" valign="top" style="padding: 15px;">
+    <td width="50%" valign="top" align="center" style="padding: 15px;">
       <h3>🎵 Music Playback</h3>
       <ul>
         <li>High-quality audio via Lavalink</li>
@@ -72,7 +72,7 @@
         <li>Audio filters (bassboost, nightcore, 3D, etc.)</li>
       </ul>
     </td>
-    <td width="50%" valign="top" style="padding: 15px;">
+    <td width="50%" valign="top" align="center" style="padding: 15px;">
       <h3>🎨 Player Experience</h3>
       <ul>
         <li>Live now-playing panel with buttons</li>
@@ -92,7 +92,9 @@
 
 <h2 align="center">🚀 Quick Start</h2>
 
-<div align="center">
+<table align="center" border="0">
+<tr>
+<td width="33%" align="center" valign="top">
 
 <details>
 <summary><b>🍞 Bun (Source)</b></summary>
@@ -107,6 +109,9 @@ bun run start:bun
 
 </details>
 
+</td>
+<td width="33%" align="center" valign="top">
+
 <details>
 <summary><b>🟢 Node.js (Dist)</b></summary>
 
@@ -119,6 +124,9 @@ npm start
 ```
 
 </details>
+
+</td>
+<td width="33%" align="center" valign="top">
 
 <details>
 <summary><b>📦 From Source</b></summary>
@@ -136,7 +144,6 @@ bun start     # or: npm start
 </td>
 </tr>
 </table>
-</div>
 
 <br>
 
