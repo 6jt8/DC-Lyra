@@ -20,6 +20,7 @@ jobs:
 
       - name: Parse tag info
         id: tag
+        shell: bash
         run: |
           TAG="${{ github.ref_name }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -38,20 +39,28 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install 7zip
-        run: apt-get update && apt-get install -y p7zip-full
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full zip
 
       - name: Build
         run: |
           npm install
           npm run build
+          if [ ! -d "dist" ]; then
+            echo "ERROR: Build did not produce a 'dist' directory"
+            exit 1
+          fi
 
       - name: Generate changelog
         id: changelog
+        shell: bash
         run: |
+          set -euo pipefail
           TAG="${{ steps.tag.outputs.tag }}"
           PREV_TAG=$(git tag --sort=-creatordate --list 'v*-release' | head -1 || true)
-          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
+          if [ -n "${PREV_TAG:-}" ] && [ "${PREV_TAG}" != "${TAG}" ]; then
             RANGE="${PREV_TAG}..HEAD"
           else
             RANGE=$(git rev-list --max-count=1 HEAD)
@@ -63,7 +72,7 @@ jobs:
           while IFS= read -r line; do
             if echo "$line" | grep -qP 'Merge pull request #\d+ from [^/]+/'; then
               AUTHOR=$(echo "$line" | grep -oP 'from \K[^/]+')
-              if [ -n "$AUTHOR" ] && [ "$AUTHOR" != "sayrox106" ] && ! echo "$AUTHOR" | grep -q '\['; then
+              if [ -n "${AUTHOR:-}" ] && [ "$AUTHOR" != "sayrox106" ] && ! echo "$AUTHOR" | grep -q '\['; then
                 ALREADY_SEEN=false
                 for S in "${SEEN_AUTHORS[@]}"; do
                   if [ "$S" = "$AUTHOR" ]; then
@@ -104,16 +113,18 @@ jobs:
           echo "$NOTES" > changelog_body.txt
 
       - name: Prepare dist archives
+        shell: bash
         run: |
+          set -euo pipefail
           VERSION="${{ steps.tag.outputs.version }}"
-          rm -rf "dist-package"
-          mkdir -p "dist-package"
-          cp -r dist "dist-package/dist"
-          cp package.json "dist-package/"
-          cp package-lock.json "dist-package/" 2>/dev/null || true
-          cp bun.lock "dist-package/" 2>/dev/null || true
-          cp .env.example "dist-package/"
-          cp tsconfig.json "dist-package/"
+          rm -rf dist-package
+          mkdir -p dist-package
+          cp -r dist dist-package/
+          cp package.json dist-package/
+          cp package-lock.json dist-package/ 2>/dev/null || true
+          cp bun.lock dist-package/ 2>/dev/null || true
+          cp .env.example dist-package/
+          cp tsconfig.json dist-package/
           cd dist-package
           zip -r "../lyra-music-${VERSION}-dist.zip" .
           7z a "../lyra-music-${VERSION}-dist.7z" .
@@ -121,23 +132,23 @@ jobs:
           cd ..
 
       - name: Prepare source archives
+        shell: bash
         run: |
+          set -euo pipefail
           VERSION="${{ steps.tag.outputs.version }}"
-          rm -rf "src-package"
-          mkdir -p "src-package/src"
-          mkdir -p "src-package/languages"
-          mkdir -p "src-package/icoms"
-          cp -r src "src-package/src"
-          cp -r languages src-package/
-          cp -r icoms src-package/
+          rm -rf src-package
+          mkdir -p src-package
+          cp -r src src-package/
+          cp -r languages src-package/ 2>/dev/null || true
+          cp -r icoms src-package/ 2>/dev/null || true
           cp package.json src-package/
           cp package-lock.json src-package/ 2>/dev/null || true
           cp bun.lock src-package/ 2>/dev/null || true
           cp .env.example src-package/
           cp tsconfig.json src-package/
-          cp index.html src-package/
-          cp README.md src-package/
-          cp LICENSE src-package/
+          cp index.html src-package/ 2>/dev/null || true
+          cp README.md src-package/ 2>/dev/null || true
+          cp LICENSE src-package/ 2>/dev/null || true
           cd src-package
           zip -r "../lyra-music-${VERSION}-src.zip" .
           7z a "../lyra-music-${VERSION}-src.7z" .
