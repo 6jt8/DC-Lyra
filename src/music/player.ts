@@ -269,6 +269,17 @@ export async function initializePlayer(client: any): Promise<void> {
           } catch (cleanupError) {
             console.error("[PLAYER] Error cleaning up after track exception:", cleanupError);
           }
+
+          if (player.queue && player.queue.length > 0) {
+            console.log(
+              `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track after exception for guild ${player?.guildId || "unknown"}${colors.reset}`
+            );
+            setTimeout(() => {
+              try { player.play(); } catch (e) {
+                console.error("[PLAYER] Error playing next track after exception:", e);
+              }
+            }, 1000);
+          }
         }
       } catch (err) {
         console.error("[PLAYER] Error in trackException handler:", err);
@@ -280,6 +291,7 @@ export async function initializePlayer(client: any): Promise<void> {
     try {
       const lang = getLangSync();
       const errorMsg = error?.message || "Unknown error";
+      const guildId = player?.guildId || "unknown";
 
       if (
         errorMsg.includes("Connect Timeout") ||
@@ -287,11 +299,11 @@ export async function initializePlayer(client: any): Promise<void> {
         errorMsg.includes("timeout")
       ) {
         console.warn(
-          `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Track stuck due to connection timeout for guild ${player?.guildId || "unknown"} - will retry${colors.reset}`
+          `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Track stuck due to connection timeout for guild ${guildId} - will retry${colors.reset}`
         );
       } else {
         console.error(
-          `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.red}${lang.console?.player?.trackStuck?.replace("{guildId}", player?.guildId || "unknown").replace("{message}", errorMsg) || `Track Stuck for guild ${player?.guildId || "unknown"}: ${errorMsg}`}${colors.reset}`
+          `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.red}${lang.console?.player?.trackStuck?.replace("{guildId}", guildId).replace("{message}", errorMsg) || `Track Stuck for guild ${guildId}: ${errorMsg}`}${colors.reset}`
         );
       }
 
@@ -305,6 +317,28 @@ export async function initializePlayer(client: any): Promise<void> {
           await cleanupTrackMessages(client, player);
         } catch (cleanupError) {
           console.error("[PLAYER] Error cleaning up after track stuck:", cleanupError);
+        }
+
+        if (player.queue && player.queue.length > 0) {
+          console.log(
+            `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track in queue for guild ${guildId}${colors.reset}`
+          );
+          try {
+            player.play();
+          } catch (playError) {
+            console.error("[PLAYER] Error playing next track after stuck:", playError);
+          }
+        } else {
+          const channel = client.channels.cache.get(player.textChannel);
+          if (channel) {
+            const t = lang.console?.player || {};
+            sendTransientCard(
+              channel,
+              t.queueEnd?.queueEndedAutoplayDisabled || "🎵 **Track stuck. Queue is empty.**",
+              5000,
+              "Track Stuck"
+            ).catch(() => {});
+          }
         }
       }
     } catch (err) {

@@ -48,15 +48,25 @@ process.on("unhandledRejection", (error: any) => {
   if (error && (error.cause || error.message)) {
     const cause = error.cause || {};
     const errorMsg = error.message || "";
+    const causeCode = cause.code || "";
+    const causeMessage = cause.message || "";
 
     if (
-      cause.code === "UND_ERR_CONNECT_TIMEOUT" ||
+      causeCode === "UND_ERR_CONNECT_TIMEOUT" ||
+      causeCode === "ECONNRESET" ||
+      causeCode === "ECONNREFUSED" ||
+      causeCode === "ENOTFOUND" ||
+      causeCode === "UND_ERR_SOCKET" ||
       errorMsg.includes("Connect Timeout") ||
       errorMsg.includes("fetch failed") ||
-      errorMsg.includes("ConnectTimeoutError")
+      errorMsg.includes("ConnectTimeoutError") ||
+      errorMsg.includes("ECONNRESET") ||
+      errorMsg.includes("socket connection was closed") ||
+      causeMessage.includes("ECONNRESET") ||
+      causeMessage.includes("socket connection was closed")
     ) {
       console.warn(
-        `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Connection timeout to Lavalink node - will retry automatically${colors.reset}`
+        `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Network error to Lavalink node (${causeCode || "socket"}) - will retry automatically${colors.reset}`
       );
       return;
     }
