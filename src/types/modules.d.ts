@@ -50,11 +50,27 @@ declare module "spotify-url-info" {
     type: "track" | "playlist" | "album";
     name?: string;
     artists?: Array<{ name: string }>;
+    tracks?: Array<{ name: string; artists: Array<{ name: string }> }>;
+    trackList?: Array<{ title: string; artist: string }>;
   }
 
-  function getDataFactory(fetch: typeof globalThis.fetch): {
-    getData: (url: string) => Promise<SpotifyData>;
-  };
+  interface ScrapedTrack {
+    artist: string;
+    duration?: number;
+    name: string;
+    previewUrl?: string;
+    uri: string;
+  }
+
+  interface SpotifyUrlInfo {
+    getData: (url: string, opts?: RequestInit) => Promise<SpotifyData>;
+    getTracks: (url: string, opts?: RequestInit) => Promise<ScrapedTrack[]>;
+    getDetails: (url: string, opts?: RequestInit) => Promise<{ preview: any; tracks: ScrapedTrack[] }>;
+    getPreview: (url: string, opts?: RequestInit) => Promise<any>;
+    getLink: (data: unknown) => string;
+  }
+
+  function getDataFactory(fetch: typeof globalThis.fetch): SpotifyUrlInfo;
 
   export default getDataFactory;
 }

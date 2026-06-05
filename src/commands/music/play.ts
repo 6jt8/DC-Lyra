@@ -2,7 +2,8 @@ import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { config } from '../../config.js';
 import SpotifyWebApi from 'spotify-web-api-node';
 import getDataFactory from 'spotify-url-info';
-const { getData } = getDataFactory(globalThis.fetch);
+const spotifyScraper = getDataFactory(globalThis.fetch);
+const { getData, getTracks: spotifyScrapeTracks } = spotifyScraper;
 import { sendErrorResponse, handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle, stripLeadingIcons } from '../../ui/responseHandler.js';
 import { checkVoiceChannel as checkVC } from '../../utils/voiceChannel.js';
 import { getLavalinkManager } from '../../music/lavalink.js';
@@ -61,8 +62,13 @@ async function getSpotifyPlaylistTracks(playlistId: string) {
 
         return tracks;
     } catch (error: any) {
+        const statusCode = error?.statusCode || error?.status;
         if (error?.body?.error === "invalid_client") {
-            console.warn("[ SPOTIFY ] Invalid or missing Spotify API credentials. Playlist tracks cannot be fetched.");
+            console.warn("[ SPOTIFY ] Invalid or missing Spotify API credentials.");
+        } else if (statusCode === 403) {
+            console.warn("[ SPOTIFY ] Spotify API 403 - server IP may be blocked. Falling back to scraping.");
+        } else if (statusCode === 429) {
+            console.warn("[ SPOTIFY ] Spotify API rate limited (429). Falling back to scraping.");
         } else {
             console.error("Error fetching Spotify playlist tracks:", error);
         }
@@ -196,15 +202,6 @@ export default {
             let isPlaylist = false;
 
             if (query.includes('spotify.com')) {
-                if (!config.spotifyClientId || !config.spotifyClientSecret) {
-                    return sendErrorResponse(
-                        interaction,
-                        `## ⚠️ Spotify Not Configured\n\n` +
-                        `Spotify links require valid API credentials.\n` +
-                        `Add \`SPOTIFY_CLIENT_ID\` and \`SPOTIFY_CLIENT_SECRET\` to your \`.env\` file.`,
-                        8000
-                    );
-                }
                 try {
                     const spotifyData: any = await getData(query);
 
@@ -215,7 +212,46 @@ export default {
                         isPlaylist = true;
                         const playlistMatch = query.match(/\/playlist\/([a-zA-Z0-9]+)/);
                         const playlistId = playlistMatch ? playlistMatch[1] : '';
-                        tracksToQueue = await getSpotifyPlaylistTracks(playlistId);
+
+                        if (config.spotifyClientId && config.spotifyClientSecret) {
+                            tracksToQueue = await getSpotifyPlaylistTracks(playlistId);
+                        }
+
+                        if (tracksToQueue.length === 0) {
+                            console.log("[ SPOTIFY ] Using spotify-url-info fallback for playlist");
+                            try {
+                                const scrapedTracks = await spotifyScrapeTracks(query);
+                                if (scrapedTracks && scrapedTracks.length > 0) {
+                                    tracksToQueue = scrapedTracks.map((t: any) =>
+                                        `${t.name} - ${t.artist}`
+                                    );
+                                }
+                            } catch (scrapeErr) {
+                                console.error("[ SPOTIFY ] Scraping fallback failed:", scrapeErr);
+                            }
+                        }
+
+                        if (tracksToQueue.length === 0) {
+                            return sendErrorResponse(
+                                interaction,
+                                `## ⚠️ Playlist Unavailable\n\n` +
+                                `Could not fetch tracks from this playlist.\n` +
+                                `Try a different source or check Spotify API credentials.`,
+                                8000
+                            );
+                        }
+                    } else if (spotifyData.type === 'album') {
+                        isPlaylist = true;
+                        try {
+                            const albumTracks = await spotifyScrapeTracks(query);
+                            if (albumTracks && albumTracks.length > 0) {
+                                tracksToQueue = albumTracks.map((t: any) =>
+                                    `${t.name} - ${t.artist}`
+                                );
+                            }
+                        } catch (scrapeErr) {
+                            console.error("[ SPOTIFY ] Album scraping failed:", scrapeErr);
+                        }
                     }
                 } catch (err) {
                     console.error('Error fetching Spotify data:', err);
