@@ -396,11 +396,13 @@ export default {
             const message = await interaction.editReply({ 
                 components: [successContainer],
                 flags: MessageFlags.IsComponentsV2,
-            });
+            }).catch(() => null);
 
-            setTimeout(() => {
-                message.delete().catch(() => {}); 
-            }, 3000);
+            if (message) {
+                setTimeout(() => {
+                    message.delete().catch(() => {}); 
+                }, 3000);
+            }
 
         } catch (error) {
             const lang = await getLang(interaction.guildId).catch(() => ({ music: { play: { errors: {} } } }));

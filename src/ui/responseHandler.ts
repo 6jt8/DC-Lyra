@@ -264,7 +264,9 @@ export async function handleCommandError(
   commandName: string,
   customMessage: string | null = null
 ): Promise<any> {
-  console.error(`Error processing ${commandName} command:`, error);
+  if ((error as any)?.code !== 10008 && (error as any)?.status !== 404) {
+    console.error(`Error processing ${commandName} command:`, error);
+  }
 
   const lang = await getLang(interaction.guildId).catch(() => {
     return getLangSync();
