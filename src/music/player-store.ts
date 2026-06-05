@@ -1,13 +1,32 @@
 import { getEmoji } from "../emoji/emoji.js";
 
+const REQUESTER_MAX_SIZE = 10_000;
+
 export const guildTrackMessages = new Map<string, any[]>();
 export const nowPlayingMessages = new Map<string, any>();
 export const progressUpdateIntervals = new Map<string, any>();
 export const interactionCollectors = new Map<string, any>();
 export const guildActiveFilter = new Map<string, string | null>();
 export const guildTrackMediaCache = new Map<string, any>();
-export const requesters = new Map<string, string>();
 export const previousTrackMap = new Map<string, any>();
+export const requesters = new Map<string, string>();
+
+export function evictRequester(): void {
+  if (requesters.size >= REQUESTER_MAX_SIZE) {
+    const firstKey = requesters.keys().next().value;
+    if (firstKey !== undefined) requesters.delete(firstKey);
+  }
+}
+
+export const pendingRecoverTimeouts = new Map<string, NodeJS.Timeout>();
+
+export function clearPendingRecover(guildId: string): void {
+  const t = pendingRecoverTimeouts.get(guildId);
+  if (t) {
+    clearTimeout(t);
+    pendingRecoverTimeouts.delete(guildId);
+  }
+}
 
 const COMMAND_MENTION_CACHE_TTL_MS = 5 * 60 * 1000;
 let commandMentionCache: {

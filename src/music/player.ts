@@ -20,6 +20,8 @@ import {
   guildActiveFilter,
   getCommandMentionMap,
   stopCollector,
+  pendingRecoverTimeouts,
+  clearPendingRecover,
 } from "./player-store.js";
 import {
   buildNowPlayingContainer,
@@ -228,29 +230,33 @@ export async function initializePlayer(client: any): Promise<void> {
             console.error("[PLAYER] Error cleaning up after track exception:", cleanupError);
           }
 
+          const guildId = player?.guildId;
           if (player.queue && player.queue.length > 0) {
-                            console.log(
-                              `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track after exception for guild ${player?.guildId || "unknown"}${colors.reset}`
-                            );
-                            setTimeout(async () => {
-                              try {
-                                if (!player.connected) {
-                                  const { ensurePlayerConnected } = await import('./player-lifecycle.js');
-                                  const connected = await ensurePlayerConnected(
-                                    player, client, player.guildId,
-                                    player.voiceChannel, player.textChannel, 8000
-                                  );
-                                  if (!connected) {
-                                    console.error(`[PLAYER] Could not recover connection for guild ${player.guildId} after track error`);
-                                    return;
-                                  }
-                                }
-                                player.play();
-                              } catch (e) {
-                                console.error("[PLAYER] Error playing next track after exception:", e);
-                              }
-                            }, 1000);
-                          }
+            console.log(
+              `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track after exception for guild ${guildId || "unknown"}${colors.reset}`
+            );
+            clearPendingRecover(guildId);
+            const timeout = setTimeout(async () => {
+              pendingRecoverTimeouts.delete(guildId);
+              try {
+                if (!player.connected) {
+                  const { ensurePlayerConnected } = await import('./player-lifecycle.js');
+                  const connected = await ensurePlayerConnected(
+                    player, client, player.guildId,
+                    player.voiceChannel, player.textChannel, 8000
+                  );
+                  if (!connected) {
+                    console.error(`[PLAYER] Could not recover connection for guild ${player.guildId} after track error`);
+                    return;
+                  }
+                }
+                player.play();
+              } catch (e) {
+                console.error("[PLAYER] Error playing next track after exception:", e);
+              }
+            }, 1000);
+            pendingRecoverTimeouts.set(guildId, timeout);
+          }
         }
       } catch (err) {
         console.error("[PLAYER] Error in trackException handler:", err);
@@ -283,28 +289,31 @@ export async function initializePlayer(client: any): Promise<void> {
         }
 
         if (player.queue && player.queue.length > 0) {
-                          console.log(
-                            `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track in queue for guild ${guildId}${colors.reset}`
-                          );
-                          (async () => {
-                            try {
-                              if (!player.connected) {
-                                const { ensurePlayerConnected } = await import('./player-lifecycle.js');
-                                const connected = await ensurePlayerConnected(
-                                  player, client, player.guildId,
-                                  player.voiceChannel, player.textChannel, 8000
-                                );
-                                if (!connected) {
-                                  console.error(`[PLAYER] Could not recover connection for guild ${player.guildId} after track stuck`);
-                                  return;
-                                }
-                              }
-                              player.play();
-                            } catch (playError) {
-                              console.error("[PLAYER] Error playing next track after stuck:", playError);
-                            }
-                          })();
-                        } else {
+          console.log(
+            `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track in queue for guild ${guildId}${colors.reset}`
+          );
+          clearPendingRecover(guildId);
+          const stuckRecover = async () => {
+            await new Promise(r => setTimeout(r, 100));
+            try {
+              if (!player.connected) {
+                const { ensurePlayerConnected } = await import('./player-lifecycle.js');
+                const connected = await ensurePlayerConnected(
+                  player, client, player.guildId,
+                  player.voiceChannel, player.textChannel, 8000
+                );
+                if (!connected) {
+                  console.error(`[PLAYER] Could not recover connection for guild ${player.guildId} after track stuck`);
+                  return;
+                }
+              }
+              player.play();
+            } catch (playError) {
+              console.error("[PLAYER] Error playing next track after stuck:", playError);
+            }
+          };
+          stuckRecover().catch(() => {});
+        } else {
           const channel = await getTextChannel(client, player.textChannel);
           if (channel) {
             const t = lang.console?.player || {};
@@ -684,6 +693,7 @@ export async function initializePlayer(client: any): Promise<void> {
       if (track?.info) previousTrackMap.set(guildId, track);
       clearTrackMediaCache(guildId);
       voteSkipMap.delete(guildId);
+      clearPendingRecover(guildId);
 
       if (client.statusManager) {
         await client.statusManager
