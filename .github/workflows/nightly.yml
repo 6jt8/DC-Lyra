@@ -1,0 +1,143 @@
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate nightly version
+        id: version
+        run: |
+          set -euo pipefail
+          BASE_TAG=$(git tag --sort=-creatordate --list 'v[0-9]*.[0-9]*.[0-9]*' | head -1 || true)
+          if [ -z "$BASE_TAG" ]; then
+            BASE_TAG="v0.0.0"
+          fi
+          BASE_VERSION=$(echo "$BASE_TAG" | grep -oP '^v\d+\.\d+\.\d+' || echo "$BASE_TAG")
+          DATE_PART=$(date -u +.%y%m%d)
+          TAG="${BASE_VERSION}-nightly.${DATE_PART}"
+          if git tag -l "$TAG" | grep -q .; then
+            echo "Tag $TAG existiert bereits, überspringe Nightly."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "date_suffix=${DATE_PART}" >> "$GITHUB_OUTPUT"
+            echo "type=Nightly" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip if tag already exists
+        if: steps.version.outputs.skip == 'true'
+        run: echo "Nightly für heute existiert bereits."
+
+      - name: Create nightly tag
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Nightly ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full zip
+
+      - name: Build
+        run: |
+          npm install
+          npm run build
+          if [ ! -d "dist" ]; then
+            echo "ERROR: Build did not produce a 'dist' directory"
+            exit 1
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          PREV_TAG=$(git tag --sort=-creatordate --list 'v*-nightly*' | head -1 || true)
+          COMMITS=$(git log HEAD --since="1 day ago" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Nightly build")
+          NOTES="### Nightly Build $(date -u +'%Y-%m-%d')"
+          NOTES+=$'\n\n'"${COMMITS}"
+          echo "$NOTES" > changelog_body.txt
+
+      - name: Prepare dist archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          rm -rf dist-package
+          mkdir -p dist-package
+          cp -r dist dist-package/
+          cp package.json dist-package/
+          cp package-lock.json dist-package/ 2>/dev/null || true
+          cp bun.lock dist-package/ 2>/dev/null || true
+          cp .env.example dist-package/
+          cp tsconfig.json dist-package/
+          cd dist-package
+          zip -r "../lyra-music-${VERSION}-dist.zip" .
+          7z a "../lyra-music-${VERSION}-dist.7z" .
+          tar -czf "../lyra-music-${VERSION}-dist.tar.gz" .
+          cd ..
+
+      - name: Prepare source archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          rm -rf src-package
+          mkdir -p src-package
+          cp -r src src-package/
+          cp -r languages src-package/ 2>/dev/null || true
+          cp -r icoms src-package/ 2>/dev/null || true
+          cp package.json src-package/
+          cp package-lock.json src-package/ 2>/dev/null || true
+          cp bun.lock src-package/ 2>/dev/null || true
+          cp .env.example src-package/
+          cp tsconfig.json src-package/
+          cp index.html src-package/ 2>/dev/null || true
+          cp README.md src-package/ 2>/dev/null || true
+          cp LICENSE src-package/ 2>/dev/null || true
+          cd src-package
+          zip -r "../lyra-music-${VERSION}-src.zip" .
+          7z a "../lyra-music-${VERSION}-src.7z" .
+          tar -czf "../lyra-music-${VERSION}-src.tar.gz" .
+          cd ..
+
+      - name: Create Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ steps.version.outputs.tag }}"
+          name: "${{ steps.version.outputs.version }}.${{ steps.version.outputs.date_suffix }} | ${{ steps.version.outputs.type }}"
+          body_path: changelog_body.txt
+          files: |
+            lyra-music-*-dist.zip
+            lyra-music-*-dist.7z
+            lyra-music-*-dist.tar.gz
+            lyra-music-*-src.zip
+            lyra-music-*-src.7z
+            lyra-music-*-src.tar.gz
+          draft: false
+          prerelease: true
