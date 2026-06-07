@@ -55,6 +55,7 @@ process.on("unhandledRejection", (error: any) => {
       causeCode === "UND_ERR_CONNECT_TIMEOUT" ||
       causeCode === "ECONNRESET" ||
       causeCode === "ECONNREFUSED" ||
+      causeCode === "ConnectionRefused" ||
       causeCode === "ENOTFOUND" ||
       causeCode === "UND_ERR_SOCKET" ||
       errorMsg.includes("Connect Timeout") ||
@@ -62,8 +63,10 @@ process.on("unhandledRejection", (error: any) => {
       errorMsg.includes("ConnectTimeoutError") ||
       errorMsg.includes("ECONNRESET") ||
       errorMsg.includes("socket connection was closed") ||
+      errorMsg.includes("There was an Error while Making Node Request") ||
       causeMessage.includes("ECONNRESET") ||
-      causeMessage.includes("socket connection was closed")
+      causeMessage.includes("socket connection was closed") ||
+      causeMessage.includes("Unable to connect")
     ) {
       console.warn(
         `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Network error to Lavalink node (${causeCode || "socket"}) - will retry automatically${colors.reset}`

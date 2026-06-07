@@ -201,11 +201,15 @@ export async function initializePlayer(client: any): Promise<void> {
   });
 
   client.riffy.on(
-    "trackException",
-    async (player: any, error: any) => {
+    "trackError",
+    async (player: any, track: any, payload: any) => {
       try {
         const langSync = getLangSync();
-        const errorMsg = error?.message || "Unknown error";
+        const errorMsg =
+          payload?.exception?.message ||
+          payload?.message ||
+          (typeof payload === "string" ? payload : null) ||
+          "Unknown error";
         const isTimeout =
           errorMsg.includes("timeout") ||
           errorMsg.includes("Read timed out") ||
@@ -287,25 +291,17 @@ export async function initializePlayer(client: any): Promise<void> {
     }
   );
 
-  client.riffy.on("trackStuck", async (player: any, error: any) => {
+  client.riffy.on("trackStuck", async (player: any, track: any, payload: any) => {
     try {
       const lang = getLangSync();
-      const errorMsg = error?.message || "Unknown error";
+      const threshold = payload?.thresholdMs ? `${payload.thresholdMs}ms` : "unknown threshold";
+      const trackTitle = track?.info?.title || "Unknown track";
+      const errorMsg = `Stuck for ${threshold} (${trackTitle})`;
       const guildId = player?.guildId || "unknown";
 
-      if (
-        errorMsg.includes("Connect Timeout") ||
-        errorMsg.includes("fetch failed") ||
-        errorMsg.includes("timeout")
-      ) {
-        console.warn(
-          `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Track stuck due to connection timeout for guild ${guildId} - will retry${colors.reset}`
-        );
-      } else {
-        console.error(
-          `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.red}${lang.console?.player?.trackStuck?.replace("{guildId}", guildId).replace("{message}", errorMsg) || `Track Stuck for guild ${guildId}: ${errorMsg}`}${colors.reset}`
-        );
-      }
+      console.warn(
+        `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}${lang.console?.player?.trackStuck?.replace("{guildId}", guildId).replace("{message}", errorMsg) || `Track Stuck for guild ${guildId}: ${errorMsg}`}${colors.reset}`
+      );
 
       if (player && !player.destroyed) {
         try {
