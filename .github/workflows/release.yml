@@ -3,8 +3,7 @@ name: Build & Release
 on:
   push:
     tags:
-      - "v*.*.*"
-      - "v*.*.*-release"
+      - "v[0-9]*.[0-9]*.[0-9]*"
 
 permissions:
   contents: write
@@ -24,12 +23,8 @@ jobs:
         shell: bash
         run: |
           TAG="${{ github.ref_name }}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "type=Release" >> "$GITHUB_OUTPUT"
           VERSION=$(echo "$TAG" | grep -oP '^v\d+\.\d+\.\d+' || echo "$TAG")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          DATE_SUFFIX=$(date -u +.%y%m%d)
-          echo "date_suffix=$DATE_SUFFIX" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -55,8 +50,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${{ steps.tag.outputs.tag }}"
-          PREV_TAG=$(git tag --sort=-creatordate --list 'v*-release' --not "$TAG" | head -1 || true)
+          TAG="${{ github.ref_name }}"
+          PREV_TAG=$(git tag --sort=-creatordate --list 'v[0-9]*.[0-9]*.[0-9]*' --not "$TAG" | head -1 || true)
           if [ -n "${PREV_TAG:-}" ] && [ "${PREV_TAG}" != "${TAG}" ]; then
             RANGE="${PREV_TAG}..HEAD"
           else
@@ -155,7 +150,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "${{ steps.tag.outputs.version }}${{ steps.tag.outputs.date_suffix }} | ${{ steps.tag.outputs.type }}"
+          name: "${{ steps.tag.outputs.version }}"
           body_path: changelog_body.txt
           files: |
             lyra-music-*-dist.zip

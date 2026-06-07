@@ -20,32 +20,22 @@ jobs:
 
       - name: Generate nightly version
         id: version
+        shell: bash
         run: |
           set -euo pipefail
-          BASE_TAG=$(git tag --sort=-creatordate --list 'v[0-9]*.[0-9]*.[0-9]*' | head -1 || true)
+          BASE_TAG=$(git tag --sort=-creatordate --list 'nv[0-9]*.[0-9]*.[0-9]*' | head -1 || true)
           if [ -z "$BASE_TAG" ]; then
-            BASE_TAG="v0.0.0"
+            BASE_TAG="nv0.0.0"
           fi
-          BASE_VERSION=$(echo "$BASE_TAG" | grep -oP '^v\d+\.\d+\.\d+' || echo "$BASE_TAG")
-          DATE_PART=$(date -u +.%y%m%d)
-          TAG="${BASE_VERSION}-nightly.${DATE_PART}"
-          if git tag -l "$TAG" | grep -q .; then
-            echo "Tag $TAG existiert bereits, überspringe Nightly."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-            echo "version=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
-            echo "date_suffix=${DATE_PART}" >> "$GITHUB_OUTPUT"
-            echo "type=Nightly" >> "$GITHUB_OUTPUT"
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Skip if tag already exists
-        if: steps.version.outputs.skip == 'true'
-        run: echo "Nightly für heute existiert bereits."
+          CLEAN_VERSION=$(echo "$BASE_TAG" | grep -oP '\d+\.\d+\.\d+')
+          BUILD_NUM=$(echo "$BASE_TAG" | grep -oP '(?<=-)\d+' || echo "0")
+          BUILD_NUM=$((BUILD_NUM + 1))
+          TAG="nv${CLEAN_VERSION}-${BUILD_NUM}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "type=Nightly" >> "$GITHUB_OUTPUT"
 
       - name: Create nightly tag
-        if: steps.version.outputs.skip != 'true'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -77,10 +67,57 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.version.outputs.tag }}"
-          PREV_TAG=$(git tag --sort=-creatordate --list 'v*-nightly*' | head -1 || true)
-          COMMITS=$(git log HEAD --since="1 day ago" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Nightly build")
-          NOTES="### Nightly Build $(date -u +'%Y-%m-%d')"
+          PREV_TAG=$(git tag --sort=-creatordate --list 'nv[0-9]*.[0-9]*.[0-9]*' --not "$TAG" | head -1 || true)
+          if [ -n "${PREV_TAG:-}" ] && [ "${PREV_TAG}" != "${TAG}" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE=$(git rev-list --max-count=1 HEAD)
+          fi
+          COMMITS=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Nightly build")
+          MERGE_LOG=$(git log "$RANGE" --merges --pretty=format:"%s" 2>/dev/null || true)
+          SEEN_AUTHORS=()
+          AUTHORS_LIST=()
+          while IFS= read -r line; do
+            if echo "$line" | grep -qP 'Merge pull request #\d+ from [^/]+/'; then
+              AUTHOR=$(echo "$line" | grep -oP 'from \K[^/]+')
+              if [ -n "${AUTHOR:-}" ] && [ "$AUTHOR" != "sayrox106" ] && ! echo "$AUTHOR" | grep -q '\['; then
+                ALREADY_SEEN=false
+                for S in "${SEEN_AUTHORS[@]}"; do
+                  if [ "$S" = "$AUTHOR" ]; then
+                    ALREADY_SEEN=true
+                    break
+                  fi
+                done
+                if [ "$ALREADY_SEEN" = false ]; then
+                  SEEN_AUTHORS+=("$AUTHOR")
+                  AUTHORS_LIST+=("$AUTHOR")
+                fi
+              fi
+            fi
+          done <<< "$MERGE_LOG"
+          NOTES="### What's Changed"
           NOTES+=$'\n\n'"${COMMITS}"
+          NOTES+=$'\n'
+          NUM_AUTHORS=${#AUTHORS_LIST[@]}
+          if [ "$NUM_AUTHORS" -gt 0 ]; then
+            THANKS=""
+            for i in "${!AUTHORS_LIST[@]}"; do
+              AUTHOR="${AUTHORS_LIST[$i]}"
+              if [ "$i" -gt 0 ]; then
+                if [ "$i" -eq $((NUM_AUTHORS - 1)) ]; then
+                  THANKS+=", and "
+                else
+                  THANKS+=", "
+                fi
+              fi
+              THANKS+="[$AUTHOR](https://github.com/$AUTHOR)"
+            done
+            if [ "$NUM_AUTHORS" -eq 1 ]; then
+              NOTES+=$'\n\n'"**Big thanks to $THANKS for their contribution!**"
+            else
+              NOTES+=$'\n\n'"**Big thanks to $THANKS for their contributions!**"
+            fi
+          fi
           echo "$NOTES" > changelog_body.txt
 
       - name: Prepare dist archives
@@ -130,7 +167,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ steps.version.outputs.tag }}"
-          name: "${{ steps.version.outputs.version }}.${{ steps.version.outputs.date_suffix }} | ${{ steps.version.outputs.type }}"
+          name: "${{ steps.version.outputs.tag }} | ${{ steps.version.outputs.type }}"
           body_path: changelog_body.txt
           files: |
             lyra-music-*-dist.zip

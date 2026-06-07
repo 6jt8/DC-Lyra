@@ -31,13 +31,13 @@
 <table>
 <tr>
 <td width="50%" align="center" valign="middle">
-<img src="https://img.shields.io/github/v/release/sayrox106/Lyra-MC?style=for-the-badge&label=Stable&color=2ea44f" alt="Stable Release"><br><br>
+<img src="https://img.shields.io/badge/Stable-Release-2ea44f?style=for-the-badge" alt="Stable Release"><br><br>
 <a href="https://github.com/sayrox106/Lyra-MC/releases/latest">
-<img src="https://img.shields.io/badge/Download-.zip/.7z/.tar.gz-2ea44f?style=flat-square" alt="Download Stable">
+<img src="https://img.shields.io/badge/Download-.zip/.7z/.tar.gz-2ea44f?style=flat-square&v=1" alt="Download Stable">
 </a>
 </td>
 <td width="50%" align="center" valign="middle">
-<img src="https://img.shields.io/github/v/release/sayrox106/Lyra-MC?style=for-the-badge&label=Nightly&color=5865F2" alt="Nightly"><br><br>
+<img src="https://img.shields.io/badge/Nightly-Dev-5865F2?style=for-the-badge" alt="Nightly"><br><br>
 <a href="https://github.com/sayrox106/Lyra-MC/releases">
 <img src="https://img.shields.io/badge/Nightly_Build-Auto_generated-5865F2?style=flat-square" alt="Nightly Build">
 </a>
