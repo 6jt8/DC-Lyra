@@ -31,28 +31,20 @@
 <table>
 <tr>
 <td width="50%" align="center" valign="middle">
-<img src="https://img.shields.io/github/v/release/sayrox106/Lyra-MC?style=for-the-badge&label=Version&color=5865F2" alt="Latest Release">
-</td>
-<td width="50%" align="center" valign="middle">
+<img src="https://img.shields.io/github/v/release/sayrox106/Lyra-MC?style=for-the-badge&label=Stable&color=2ea44f" alt="Stable Release"><br><br>
 <a href="https://github.com/sayrox106/Lyra-MC/releases/latest">
-<img src="https://img.shields.io/badge/Download-Bun_(Source)-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun">
+<img src="https://img.shields.io/badge/Download-.zip/.7z/.tar.gz-2ea44f?style=flat-square" alt="Download Stable">
 </a>
 </td>
-</tr>
-<tr>
 <td width="50%" align="center" valign="middle">
-<img src="https://img.shields.io/github/v/release/sayrox106/Lyra-MC?style=for-the-badge&label=Version&color=5865F2" alt="Latest Release">
-</td>
-<td width="50%" align="center" valign="middle">
-<a href="https://github.com/sayrox106/Lyra-MC/releases/latest">
-<img src="https://img.shields.io/badge/Download-Node.js_(Dist)-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
+<img src="https://img.shields.io/github/v/release/sayrox106/Lyra-MC?style=for-the-badge&label=Nightly&color=5865F2" alt="Nightly"><br><br>
+<a href="https://github.com/sayrox106/Lyra-MC/releases">
+<img src="https://img.shields.io/badge/Nightly_Build-Auto_generated-5865F2?style=flat-square" alt="Nightly Build">
 </a>
 </td>
 </tr>
 </table>
 </div>
-
-<p align="center"><sub>Available as .zip, .7z, .tar.gz</sub></p>
 
 <br>
 
@@ -171,6 +163,12 @@ bun start     # or: npm start
 <br>
 
 <h2 align="center">🤝 Contributors</h2>
+
+<p align="center">
+  <a href="https://github.com/sayrox106/Lyra-MC/blob/main/CONTRIBUTING.md">
+    <img src="https://img.shields.io/badge/How_to_Contribute-5865F2?style=flat-square" alt="How to Contribute">
+  </a>
+</p>
 
 <p align="center">
   <a href="https://github.com/sayrox106/Lyra-MC/graphs/contributors">
