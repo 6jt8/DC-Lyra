@@ -210,6 +210,21 @@ export class EnhancedMusicCard {
     const y = card.y + 16;
     const radius = 26;
 
+    const THUMBNAIL_WHITELIST = new Set([
+      "i.ytimg.com",
+      "ytimg.com",
+      "yt3.ggpht.com",
+    ]);
+
+    function isAllowedThumbnailUrl(url: string): boolean {
+      try {
+        const parsed = new URL(url);
+        return THUMBNAIL_WHITELIST.has(parsed.hostname.toLowerCase());
+      } catch (_) {
+        return false;
+      }
+    }
+
     let buffer: Buffer | null = null;
     const ytId =
       tryExtractYouTubeId(cfg.trackURI) ||
@@ -219,7 +234,8 @@ export class EnhancedMusicCard {
     if (
       !buffer &&
       cfg.thumbnailURL &&
-      cfg.thumbnailURL.startsWith("http")
+      cfg.thumbnailURL.startsWith("http") &&
+      isAllowedThumbnailUrl(cfg.thumbnailURL)
     ) {
       const candidates = [cfg.thumbnailURL];
       if (ytId) {
@@ -266,7 +282,8 @@ export class EnhancedMusicCard {
 
     if (
       cfg.thumbnailURL &&
-      cfg.thumbnailURL.startsWith("http")
+      cfg.thumbnailURL.startsWith("http") &&
+      isAllowedThumbnailUrl(cfg.thumbnailURL)
     ) {
       try {
         const img = await loadImage(cfg.thumbnailURL);
