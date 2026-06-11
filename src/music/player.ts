@@ -31,10 +31,19 @@ import {
   createProgressBar,
 } from "./player-ui.js";
 import { setupCollector } from "./player-interaction.js";
-import { cleanupTrackMessages, editNowPlayingPanel } from "./player-cleanup.js";
+import { cleanupTrackMessages } from "./player-cleanup.js";
 import { applyFilterByKey } from "./player-filters.js";
 import { getAutoplayCollection, getPlaylistCollection, incrementGlobalPlays, dbConnected } from "../database/database.js";
-
+import { cleanupPreviousTrackMessages, getTextChannel } from "./player-message-utils.js";
+import { clearProgressUpdates, startProgressUpdates } from "./player-lifecycle.js";
+import {
+  activateMaintenanceMode,
+  clearMaintenanceMode,
+  incrementAutoplayFailureCount,
+  isMaintenanceMode,
+  isTrackEventNotificationAllowed,
+  resetAutoplayFailureCount,
+} from "./player-autoplay.js";
 const musicCard = new EnhancedMusicCard();
 const useGeneratedSongCard = config.generateSongCard !== false;
 const enableVoiceChannelIdPatch =
@@ -94,86 +103,6 @@ function patchVoiceChannelIdSupport(player: any): void {
   }
 }
 
-export async function cleanupPreviousTrackMessages(
-  channel: any,
-  guildId: string
-): Promise<void> {
-  const messages = guildTrackMessages.get(guildId) || [];
-
-  for (const messageInfo of messages) {
-    try {
-      const fetchChannel =
-        channel.client.channels.cache.get(messageInfo.channelId);
-      if (fetchChannel) {
-        const message = await fetchChannel.messages
-          .fetch(messageInfo.messageId)
-          .catch(() => null);
-        if (message) {
-          await message.delete().catch(() => {});
-        }
-      }
-    } catch (error) {
-      const lang = getLangSync();
-      console.error(
-        lang.console?.player?.errorCleanupPrevious ||
-          "Error cleaning up previous track message:",
-        error
-      );
-    }
-  }
-
-  guildTrackMessages.set(guildId, []);
-}
-
-async function startProgressUpdates(
-  client: any,
-  guildId: string,
-  _message: any,
-  player: any,
-  track: any
-): Promise<any> {
-  if (config.lowMemoryMode === true) {
-    return null;
-  }
-
-  const boundTrackUri = track.info.uri;
-
-  const updateInterval = setInterval(async () => {
-    try {
-      const currentPlayer = client.riffy.players.get(guildId);
-      if (!currentPlayer) {
-        clearInterval(updateInterval);
-        progressUpdateIntervals.delete(guildId);
-        return;
-      }
-
-      const stored = nowPlayingMessages.get(guildId);
-      if (!stored) {
-        clearInterval(updateInterval);
-        progressUpdateIntervals.delete(guildId);
-        return;
-      }
-
-      if (
-        !player ||
-        !player.current ||
-        player.current.info.uri !== boundTrackUri
-      ) {
-        clearInterval(updateInterval);
-        progressUpdateIntervals.delete(guildId);
-        return;
-      }
-
-      await editNowPlayingPanel(client, guildId);
-    } catch (error) {
-      clearInterval(updateInterval);
-      progressUpdateIntervals.delete(guildId);
-    }
-  }, config.progressUpdateInterval || 15000);
-
-  return updateInterval;
-}
-
 async function patchVoiceChannelOnStart(player: any): Promise<void> {
   if (enableVoiceChannelIdPatch) {
     patchVoiceChannelIdSupport(player);
@@ -207,9 +136,15 @@ export async function initializePlayer(client: any): Promise<void> {
         const langSync = getLangSync();
         const errorMsg =
           payload?.exception?.message ||
+          payload?.exception?.cause ||
           payload?.message ||
           (typeof payload === "string" ? payload : null) ||
-          "Unknown error";
+          "Something broke when playing the track.";
+        if (!payload?.exception?.message && !payload?.message) {
+          console.warn(
+            `[ LAVALINK ] ${colors.yellow}Track exception payload for guild ${player?.guildId}: ${JSON.stringify(payload)}${colors.reset}`
+          );
+        }
         const isTimeout =
           errorMsg.includes("timeout") ||
           errorMsg.includes("Read timed out") ||
@@ -226,22 +161,38 @@ export async function initializePlayer(client: any): Promise<void> {
         }
 
         const channel =
-          client.channels.cache.get(player?.textChannel);
-        if (channel) {
-          const lang = await getLang(player.guildId).catch(() => ({
-            console: { player: {} },
-          }));
-          const t = lang.console?.player || {};
-
-          let errorMessage =
-            t.trackError?.message ||
-            "Failed to load the track.";
-          if (isTimeout) {
-            errorMessage =
-              t.trackError?.timeoutMessage ||
-              "Connection timeout while loading track. This is usually a network issue on the Lavalink server.";
+          player?.textChannel
+            ? await getTextChannel(client, player.textChannel)
+            : null;
+        if (!channel) {
+          console.warn(
+            `[ LAVALINK ] Track error for guild ${player?.guildId || "unknown"}: text channel not found (${player?.textChannel || "none"}). Skipping error notification.`
+          );
+          if (player && !player.destroyed) {
+            try { player.stop(); } catch (_) {}
+            try { await cleanupTrackMessages(client, player); } catch (_) {}
+            if (player.queue && player.queue.length > 0) {
+              setTimeout(() => { try { player.play(); } catch (_) {} }, 1000);
+            }
           }
+          return;
+        }
 
+        const lang = await getLang(player.guildId).catch(() => ({
+          console: { player: {} },
+        }));
+        const t = lang.console?.player || {};
+
+        let errorMessage =
+          t.trackError?.message ||
+          "Failed to load the track.";
+        if (isTimeout) {
+          errorMessage =
+            t.trackError?.timeoutMessage ||
+            "Connection timeout while loading track. This is usually a network issue on the Lavalink server.";
+        }
+
+        if (isTrackEventNotificationAllowed(player.guildId)) {
           const trackErrorCard = cardFromMessage(
             `${t.trackError?.title || "## ⚠️ Track Error"}\n\n` +
               `${errorMessage}\n` +
@@ -262,6 +213,7 @@ export async function initializePlayer(client: any): Promise<void> {
                 );
             });
         }
+
         if (player && !player.destroyed) {
           try {
             player.stop();
@@ -325,7 +277,7 @@ export async function initializePlayer(client: any): Promise<void> {
             console.error("[PLAYER] Error playing next track after stuck:", playError);
           }
         } else {
-          const channel = client.channels.cache.get(player.textChannel);
+          const channel = await getTextChannel(client, player.textChannel);
           if (channel) {
             const t = lang.console?.player || {};
             sendTransientCard(
@@ -344,17 +296,38 @@ export async function initializePlayer(client: any): Promise<void> {
 
   client.riffy.on("trackStart", async (player: any, track: any) => {
     try {
+      const guildId = player?.guildId;
+      if (!guildId) return;
+
+      if (isMaintenanceMode(guildId)) {
+        clearMaintenanceMode(guildId);
+        const langSync = getLangSync();
+        console.log(
+          `${colors.cyan}[ AUTOPROTECT ]${colors.reset} ${colors.green}Maintenance mode cleared for guild ${guildId} because a track started successfully.${colors.reset}`
+        );
+        const playerForGuild = client.riffy.players.get(guildId);
+        if (playerForGuild && !playerForGuild.destroyed && playerForGuild.queue && playerForGuild.queue.length > 0) {
+          setTimeout(() => {
+            try {
+              playerForGuild.play();
+            } catch (_) {}
+          }, 1000);
+        }
+      }
+
+      resetAutoplayFailureCount(guildId);
+
       if (!track || !track.info) {
         const lang = getLangSync();
         console.error(
-          `[ LAVALINK ] ${lang.console?.player?.trackNull?.replace("{guildId}", player.guildId) || `Track is null or missing info for guild ${player.guildId} - ignoring event`}`
+          `[ LAVALINK ] ${lang.console?.player?.trackNull?.replace("{guildId}", guildId) || `Track is null or missing info for guild ${guildId} - ignoring event`}`
         );
         return;
       }
 
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const currentPlayer = client.riffy.players.get(player.guildId);
+      const currentPlayer = client.riffy.players.get(guildId);
       if (
         !currentPlayer ||
         currentPlayer !== player ||
@@ -362,30 +335,30 @@ export async function initializePlayer(client: any): Promise<void> {
       ) {
         const lang = getLangSync();
         console.error(
-          `[ LAVALINK ] ${lang.console?.player?.playerInvalid?.replace("{guildId}", player.guildId) || `Player invalid or destroyed for guild ${player.guildId} - ignoring event`}`
+          `[ LAVALINK ] ${lang.console?.player?.playerInvalid?.replace("{guildId}", guildId) || `Player invalid or destroyed for guild ${guildId} - ignoring event`}`
         );
         return;
       }
 
       if (client.statusManager && track.info.title) {
-      await client.statusManager
-        .onTrackStart(player.guildId)
-        .catch(() => {});
-    }
+        await client.statusManager
+          .onTrackStart(guildId)
+          .catch(() => {});
+      }
 
-    incrementGlobalPlays().catch(() => {});
+      incrementGlobalPlays().catch(() => {});
 
     const channel =
-      client.channels.cache.get(player.textChannel);
+      player?.textChannel
+        ? await getTextChannel(client, player.textChannel)
+        : null;
     if (!channel) {
       const lang = getLangSync();
       console.error(
-        `[ LAVALINK ] ${lang.console?.player?.channelNotFound?.replace("{guildId}", player.guildId) || `Channel not found for guild ${player.guildId}`}`
+        `[ LAVALINK ] ${lang.console?.player?.channelNotFound?.replace("{guildId}", guildId) || `Channel not found for guild ${guildId}`}`
       );
       return;
     }
-
-    const guildId = player.guildId;
     const trackUri = track.info.uri;
     const requester = requesters.get(trackUri);
     const lang = await getLang(guildId).catch(() => {
@@ -526,18 +499,14 @@ export async function initializePlayer(client: any): Promise<void> {
       let message = null;
 
       if (existingStored) {
-        const existingChannel = client.channels.cache.get(existingStored.channelId);
+        const existingChannel = await getTextChannel(client, existingStored.channelId);
         if (existingChannel) {
           const existingMsg = await existingChannel.messages
             .fetch(existingStored.messageId)
             .catch(() => null);
           if (existingMsg) {
             stopCollector(guildId);
-            const oldInterval = progressUpdateIntervals.get(guildId);
-            if (oldInterval) {
-              clearInterval(oldInterval);
-              progressUpdateIntervals.delete(guildId);
-            }
+            clearProgressUpdates(guildId);
             const editPayload: any = {
               components,
               flags: MessageFlags.IsComponentsV2,
@@ -553,7 +522,7 @@ export async function initializePlayer(client: any): Promise<void> {
 
       if (!message) {
         if (existingStored) {
-          const oldChannel = client.channels.cache.get(existingStored.channelId);
+          const oldChannel = await getTextChannel(client, existingStored.channelId);
           if (oldChannel) {
             const oldMsg = await oldChannel.messages
               .fetch(existingStored.messageId)
@@ -670,11 +639,7 @@ export async function initializePlayer(client: any): Promise<void> {
           .catch(() => {});
       }
 
-      const intervalId = progressUpdateIntervals.get(guildId);
-      if (intervalId) {
-        clearInterval(intervalId);
-        progressUpdateIntervals.delete(guildId);
-      }
+      clearProgressUpdates(guildId);
 
       await cleanupTrackMessages(client, player);
     } catch (err) {
@@ -685,14 +650,25 @@ export async function initializePlayer(client: any): Promise<void> {
   client.riffy.on("queueEnd", async (player: any) => {
     try {
       const channel =
-        client.channels.cache.get(player.textChannel);
+        await getTextChannel(client, player.textChannel);
       const guildId = player.guildId;
       clearTrackMediaCache(guildId);
 
-    try {
+      if (!channel) {
+        const lang = getLangSync();
+        console.warn(
+          lang.console?.player?.channelNotFound?.replace("{guildId}", guildId) ||
+            `[ LAVALINK ] Channel not found for queueEnd guild ${guildId}. Skipping messages.`
+        );
+        if (player && !player.destroyed) {
+          try { player.destroy(); } catch (_) {}
+        }
+        return;
+      }
+
       const settings = await getAutoplayCollection()?.findOne({
         guildId,
-      });
+      }).catch(() => null);
       const is24_7 = settings?.twentyfourseven;
 
       if (settings?.autoplay) {
@@ -813,12 +789,14 @@ export async function initializePlayer(client: any): Promise<void> {
           "Error handling queue end:",
         error
       );
+      const guildId = player?.guildId;
+      if (!guildId) return;
       await cleanupTrackMessages(client, player);
       let settings: any = null;
       try {
         const autoplayCollection = getAutoplayCollection();
         if (autoplayCollection) {
-          settings = await autoplayCollection.findOne({ guildId });
+          settings = await autoplayCollection.findOne({ guildId }).catch(() => null);
         }
       } catch {
         settings = null;
@@ -827,23 +805,23 @@ export async function initializePlayer(client: any): Promise<void> {
         console: { player: {} },
       }));
       const t = lang.console?.player || {};
-      if (!settings?.twentyfourseven) {
+      if (!settings?.twentyfourseven && player && !player.destroyed) {
         client.statusManager?.onPlayerDisconnect(guildId);
-        player.destroy();
-        await sendTransientCard(
-          channel,
-          t.queueEnd?.queueEmpty ||
-            "👾 **Queue Empty! Disconnecting...**",
-          5000,
-          "Queue Empty"
-        );
-      } else {
+        try { player.destroy(); } catch (_) {}
+        const channel = await getTextChannel(client, player.textChannel).catch(() => null);
+        if (channel) {
+          await sendTransientCard(
+            channel,
+            t.queueEnd?.queueEmpty ||
+              "👾 **Queue Empty! Disconnecting...**",
+            5000,
+            "Queue Empty"
+          );
+        }
+      } else if (player && !player.destroyed) {
         client.statusManager?.clearVoiceChannelStatus(guildId);
         client.statusManager?.setDefaultStatus();
       }
-    }
-    } catch (outerErr) {
-      console.error("[PLAYER] Error in queueEnd handler:", outerErr);
     }
   });
 }
