@@ -24,6 +24,7 @@ export class LavalinkNodeManager {
   public connectionPromise: any;
   public connectionResolve: any;
   private reconnectInterval: any;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   constructor(client: any) {
     this.client = client;
@@ -35,6 +36,7 @@ export class LavalinkNodeManager {
     this.initialized = false;
     this.connectionPromise = null;
     this.connectionResolve = null;
+    this.reconnectTimeout = null;
 
     this.initializeNodes();
   }
@@ -310,6 +312,7 @@ export class LavalinkNodeManager {
   async reconnectNodesNow(
     maxWaitTime: number = 8000
   ): Promise<boolean> {
+    this.clearScheduledReconnect();
     await this.checkAllNodesHealth().catch(() => {});
     const attempted = await this.forceConnectAllNodes();
 
@@ -325,6 +328,21 @@ export class LavalinkNodeManager {
       await new Promise((res) => setTimeout(res, 400));
     }
     return attempted && this.hasConnectedNodes();
+  }
+
+  private clearScheduledReconnect(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+  }
+
+  private scheduleReconnect(delayMs: number): void {
+    this.clearScheduledReconnect();
+    this.reconnectTimeout = setTimeout(async () => {
+      this.reconnectTimeout = null;
+      await this.reconnectNodesNow(8000).catch(() => {});
+    }, delayMs);
   }
 
   async refreshRiffy(): Promise<boolean> {
@@ -628,25 +646,35 @@ export class LavalinkNodeManager {
   }
 
   startHealthMonitoring(): void {
+    const healthCheckMs = 60000;
+    let consecutiveZeroConnected = 0;
+
     this.healthCheckInterval = setInterval(async () => {
-      const connected = this.getConnectedNodeCount();
-      const total = this.getTotalNodeCount();
-      if (connected === 0 && total > 0) {
+      try {
+        const connected = this.getConnectedNodeCount();
+        const total = this.getTotalNodeCount();
+
+        if (connected === 0 && total > 0) {
+          consecutiveZeroConnected++;
+          const backoffMs = Math.min(consecutiveZeroConnected * 30000, 180000);
+          const lang = getLangSync_impl();
+          console.log(
+            `${colors.cyan}[ LAVALINK ][STATUS]${colors.reset} ${colors.yellow}${lang.console?.lavalink?.noNodesConnected?.replace("{connected}", connected).replace("{total}", total) || `No nodes connected (${connected}/${total}) — attempting reconnect in ${backoffMs / 1000}s...`}${colors.reset}`
+          );
+          this.scheduleReconnect(backoffMs);
+        } else {
+          consecutiveZeroConnected = 0;
+          if (this.hasConnectedNodes()) {
+            this.clearScheduledReconnect();
+          }
+        }
+
         const lang = getLangSync_impl();
         console.log(
-          `${colors.cyan}[ LAVALINK ][STATUS]${colors.reset} ${colors.yellow}${lang.console?.lavalink?.noNodesConnected?.replace("{connected}", connected).replace("{total}", total) || `No nodes connected (${connected}/${total}) — attempting reconnect...`}${colors.reset}`
+          `${colors.cyan}[ LAVALINK ][STATUS]${colors.reset} ${connected > 0 ? colors.green : colors.red}${lang.console?.lavalink?.nodeStatusReport?.replace("{connected}", connected).replace("{total}", total) || `Node Status: ${connected}/${total} connected`}${colors.reset}`
         );
-        await this.reconnectNodesNow(5000);
-      }
-    }, 60000);
-
-    this.reconnectInterval = setInterval(async () => {
-      const connected = this.getConnectedNodeCount();
-      const total = this.getTotalNodeCount();
-      if (connected === 0 && total > 0) {
-        await this.reconnectNodesNow(5000);
-      }
-    }, 30000);
+      } catch (_) {}
+    }, healthCheckMs);
 
     setTimeout(() => {
       const connected = this.getConnectedNodeCount();
@@ -764,6 +792,7 @@ export class LavalinkNodeManager {
       clearInterval(this.connectLoopInterval);
       this.connectLoopInterval = null;
     }
+    this.clearScheduledReconnect();
     if (this.riffy) {
       this.riffy.destroy();
       this.riffy = null;
