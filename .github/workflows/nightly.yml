@@ -17,30 +17,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Generate nightly version
         id: version
         shell: bash
         run: |
           set -euo pipefail
-          BASE_TAG=$(git tag --sort=-creatordate --list 'nv[0-9]*.[0-9]*.[0-9]*' | head -1 || true)
-          if [ -z "$BASE_TAG" ]; then
-            BASE_TAG="nv0.0.0"
+          BASE_TAG=$(git describe --tags --abbrev=0 --match 'nv[0-9]*.[0-9]*.[0-9]*-[0-9]*' 2>/dev/null || true)
+          if [ -z "${BASE_TAG:-}" ]; then
+            RELEASE_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null || true)
+            if [ -n "${RELEASE_TAG:-}" ]; then
+              BASE_TAG="nv${RELEASE_TAG#v}-0"
+            else
+              BASE_TAG="nv0.0.0-0"
+            fi
           fi
-          CLEAN_VERSION=$(echo "$BASE_TAG" | grep -oP '\d+\.\d+\.\d+')
-          BUILD_NUM=$(echo "$BASE_TAG" | grep -oP '(?<=-)\d+' || echo "0")
+          CLEAN_VERSION=$(echo "$BASE_TAG" | sed -E 's/^nv([0-9]+\.[0-9]+\.[0-9]+)-[0-9]+$/\1/')
+          BUILD_NUM="${BASE_TAG##*-}"
+          if ! [[ "$BUILD_NUM" =~ ^[0-9]+$ ]]; then
+            BUILD_NUM=0
+          fi
           BUILD_NUM=$((BUILD_NUM + 1))
           TAG="nv${CLEAN_VERSION}-${BUILD_NUM}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
           echo "type=Nightly" >> "$GITHUB_OUTPUT"
-
-      - name: Create nightly tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Nightly ${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,15 +68,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${{ steps.version.outputs.tag }}"
-          PREV_TAG=$(git tag --sort=-creatordate --list 'nv[0-9]*.[0-9]*.[0-9]*' --not "$TAG" | head -1 || true)
-          if [ -n "${PREV_TAG:-}" ] && [ "${PREV_TAG}" != "${TAG}" ]; then
-            RANGE="${PREV_TAG}..HEAD"
-          else
-            RANGE=$(git rev-list --max-count=1 HEAD)
+          PREV_TAG=$(git describe --tags --abbrev=0 --match 'nv*' HEAD~1 2>/dev/null || true)
+          if [ -z "${PREV_TAG:-}" ]; then
+            PREV_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null || true)
           fi
-          COMMITS=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Nightly build")
-          MERGE_LOG=$(git log "$RANGE" --merges --pretty=format:"%s" 2>/dev/null || true)
+          COMMITS=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || true)
+          if [ -z "${COMMITS:-}" ]; then
+            echo "### What's Changed" > changelog_body.txt
+            echo "" >> changelog_body.txt
+            echo "- Keine neuen Änderungen seit der letzten Nightly" >> changelog_body.txt
+            exit 0
+          fi
+          MERGE_LOG=$(git log "${PREV_TAG}..HEAD" --merges --pretty=format:"%s" 2>/dev/null || true)
           SEEN_AUTHORS=()
           AUTHORS_LIST=()
           while IFS= read -r line; do
@@ -120,6 +125,13 @@ jobs:
           fi
           echo "$NOTES" > changelog_body.txt
 
+      - name: Create nightly tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Nightly ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
       - name: Prepare dist archives
         shell: bash
         run: |
@@ -135,32 +147,6 @@ jobs:
           cp tsconfig.json dist-package/
           cd dist-package
           zip -r "../lyra-music-${VERSION}-dist.zip" .
-          7z a "../lyra-music-${VERSION}-dist.7z" .
-          tar -czf "../lyra-music-${VERSION}-dist.tar.gz" .
-          cd ..
-
-      - name: Prepare source archives
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
-          rm -rf src-package
-          mkdir -p src-package
-          cp -r src src-package/
-          cp -r languages src-package/ 2>/dev/null || true
-          cp -r icoms src-package/ 2>/dev/null || true
-          cp package.json src-package/
-          cp package-lock.json src-package/ 2>/dev/null || true
-          cp bun.lock src-package/ 2>/dev/null || true
-          cp .env.example src-package/
-          cp tsconfig.json src-package/
-          cp index.html src-package/ 2>/dev/null || true
-          cp README.md src-package/ 2>/dev/null || true
-          cp LICENSE src-package/ 2>/dev/null || true
-          cd src-package
-          zip -r "../lyra-music-${VERSION}-src.zip" .
-          7z a "../lyra-music-${VERSION}-src.7z" .
-          tar -czf "../lyra-music-${VERSION}-src.tar.gz" .
           cd ..
 
       - name: Create Nightly Release
@@ -171,10 +157,5 @@ jobs:
           body_path: changelog_body.txt
           files: |
             lyra-music-*-dist.zip
-            lyra-music-*-dist.7z
-            lyra-music-*-dist.tar.gz
-            lyra-music-*-src.zip
-            lyra-music-*-src.7z
-            lyra-music-*-src.tar.gz
           draft: false
           prerelease: true
