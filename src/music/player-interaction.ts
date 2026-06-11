@@ -10,7 +10,6 @@ import {
   PLAYER_FAVORITES_NAME,
   LEGACY_PLAYER_FAVORITES_NAME,
   getCommandMentionMap,
-  progressUpdateIntervals,
   requesters,
 } from "./player-store.js";
 import {
@@ -26,6 +25,7 @@ import { stopCollector, restartCollector } from "./player-store.js";
 import { refreshNowPlayingPanel, cleanupTrackMessages } from "./player-cleanup.js";
 import { applyFilterByKey } from "./player-filters.js";
 import { getPlaylistCollection } from "../database/database.js";
+import { clearProgressUpdates } from "./player-lifecycle.js";
 
 export function setupCollector(
   client: any,
@@ -617,12 +617,4 @@ function disableLoop(
 ): string {
   player.setLoop("none");
   return t.controls?.loopDisabled || "❌ **Loop is disabled!**";
-}
-
-function clearProgressUpdates(guildId: string): void {
-  const intervalId = progressUpdateIntervals.get(guildId);
-  if (intervalId) {
-    clearInterval(intervalId);
-    progressUpdateIntervals.delete(guildId);
-  }
 }
