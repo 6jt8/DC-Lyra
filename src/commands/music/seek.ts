@@ -1,8 +1,8 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { checkVoiceChannel } from '../../utils/voiceChannel.js';
-import { checkCurrentTrack } from '../../utils/playerValidation.js';
-import { sendErrorResponse, sendSuccessResponse, handleCommandError, safeDeferReply } from '../../ui/responseHandler.js';
+import { sendErrorResponse, sendSuccessResponse, handleCommandError } from '../../ui/responseHandler.js';
 import { getLang } from '../../utils/language.js';
+import { checkCurrentTrack } from '../../utils/playerValidation.js';
+import { deferOrReturn, replyWithValidation, replyWithVoiceCheck } from '../../utils/music-command-helpers.js';
 
 const data = new SlashCommandBuilder()
   .setName("seek")
@@ -52,33 +52,17 @@ export default {
     data: data,
     run: async (client: any, interaction: any) => {
         try {
-            const deferred = await safeDeferReply(interaction);
-            if (!deferred && !interaction.deferred && !interaction.replied) return;
+            if (!await deferOrReturn(interaction)) return;
             const lang = await getLang(interaction.guildId);
             const t = lang.music.seek;
 
             const player = client.riffy.players.get(interaction.guildId);
-            const check = await checkVoiceChannel(interaction, player);
-            
-            if (!check.allowed) {
-                const reply = await interaction.editReply({
-                    ...check.response,
-                    fetchReply: true
-                });
-                setTimeout(() => reply.delete().catch(() => {}), 5000);
-                return reply;
-            }
+            const voiceReply = await replyWithVoiceCheck(client, interaction, player);
+            if (voiceReply) return voiceReply;
 
             const trackCheck = await checkCurrentTrack(player, null, interaction.guildId);
-            
-            if (!trackCheck.valid) {
-                const reply = await interaction.editReply({
-                    ...trackCheck.response,
-                    fetchReply: true
-                });
-                setTimeout(() => reply.delete().catch(() => {}), 5000);
-                return reply;
-            }
+            const validationReply = await replyWithValidation(interaction, trackCheck);
+            if (validationReply) return validationReply;
 
             const timeInput = interaction.options.getString('time');
             const trackLength = player.current.info.length;
