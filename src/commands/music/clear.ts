@@ -30,7 +30,7 @@ export default {
             }
 
             
-            if (!player || player.destroyed) {
+            if (!player || (player && player.destroyed)) {
                 return await handleCommandError(
                     interaction,
                     new Error('Player not available'),
