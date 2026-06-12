@@ -19,6 +19,7 @@ export class LavalinkNodeManager {
   public nodeStatus: Map<string, any>;
   public healthCheckInterval: any;
   public connectLoopInterval: any;
+  private lastReportedStatus: { connected: number; total: number } | null = null;
   public riffy: any;
   public initialized: boolean;
   public connectionPromise: any;
@@ -32,6 +33,7 @@ export class LavalinkNodeManager {
     this.nodeStatus = new Map();
     this.healthCheckInterval = null;
     this.connectLoopInterval = null;
+    this.lastReportedStatus = null;
     this.riffy = null;
     this.initialized = false;
     this.connectionPromise = null;
@@ -669,10 +671,16 @@ export class LavalinkNodeManager {
           }
         }
 
-        const lang = getLangSync_impl();
-        console.log(
-          `${colors.cyan}[ LAVALINK ][STATUS]${colors.reset} ${connected > 0 ? colors.green : colors.red}${lang.console?.lavalink?.nodeStatusReport?.replace("{connected}", connected).replace("{total}", total) || `Node Status: ${connected}/${total} connected`}${colors.reset}`
-        );
+        if (
+          this.lastReportedStatus?.connected !== connected ||
+          this.lastReportedStatus?.total !== total
+        ) {
+          const lang = getLangSync_impl();
+          console.log(
+            `${colors.cyan}[ LAVALINK ][STATUS]${colors.reset} ${connected > 0 ? colors.green : colors.red}${lang.console?.lavalink?.nodeStatusReport?.replace("{connected}", connected).replace("{total}", total) || `Node Status: ${connected}/${total} connected`}${colors.reset}`
+          );
+          this.lastReportedStatus = { connected, total };
+        }
       } catch (_) {}
     }, healthCheckMs);
 
