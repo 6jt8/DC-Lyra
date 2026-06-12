@@ -33,7 +33,7 @@
 <td width="50%" align="center" valign="middle">
 <img src="https://img.shields.io/badge/Stable-Release-2ea44f?style=for-the-badge" alt="Stable Release"><br><br>
 <a href="https://github.com/sayrox106/Lyra-MC/releases/latest">
-<img src="https://img.shields.io/badge/Download-.zip/.7z/.tar.gz-2ea44f?style=flat-square&v=1" alt="Download Stable">
+<img src="https://img.shields.io/badge/Download-.zip-2ea44f?style=flat-square&v=1" alt="Download Stable">
 </a>
 </td>
 <td width="50%" align="center" valign="middle">
