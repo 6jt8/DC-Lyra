@@ -13,6 +13,7 @@ import { setClient, getAllAvailableEmojis } from "./emoji/emoji.js";
 import { cleanupTrackMessages } from "./music/player-cleanup.js";
 import { guildTrackMessages, nowPlayingMessages, progressUpdateIntervals, interactionCollectors } from "./music/player-store.js";
 import { stopCollector, restartCollector } from "./music/player-store.js";
+import { restoreAllPlayerSessions } from "./music/player-session-restore.js";
 
 const client = new LyraClient();
 
@@ -219,6 +220,14 @@ client.on("clientReady", async () => {
   }
 });
 
+  setTimeout(() => {
+    restoreAllPlayerSessions(client).catch((err: any) => {
+      console.warn(
+        `${colors.cyan}[ RESTORE ]${colors.reset} ${colors.red}Failed to restore sessions: ${err?.message || err}${colors.reset}`
+      );
+    });
+  }, 5000);
+
 fs.readdir(path.join(__dirname, "events"), (_err, files) => {
   if (_err || !files) return;
   files.forEach((file) => {
@@ -396,3 +405,4 @@ app.listen(port, () => {
 });
 
 export default client;
+

@@ -21,6 +21,7 @@ import {
   createProgressBar,
   getTrackMediaCache,
 } from "./player-ui.js";
+import { savePlayerSession, deletePlayerSession } from "../database/player-sessions.js";
 
 export function clearProgressUpdates(guildId: string): void {
   const intervalId = progressUpdateIntervals.get(guildId);
@@ -40,6 +41,7 @@ export function resetGuildPlayerState(client: any, player: any): void {
   guildTrackMessages.set(guildId, []);
   nowPlayingMessages.delete(guildId);
   guildActiveFilter.delete(guildId);
+  deletePlayerSession(guildId).catch(() => {});
 
   if (player?.current?.info?.uri) {
     requesters.delete(player.current.info.uri);
@@ -164,6 +166,20 @@ export async function editNowPlayingPanel(
     editPayload.files = [payload.attachment];
   }
 
+  savePlayerSession(guildId, {
+    voiceChannelId: player.voiceChannel,
+    textChannelId: stored.channelId,
+    messageId: stored.messageId,
+    trackEncoded: track.track || null,
+    position: player.position || 0,
+    loopMode: player.loop || "none",
+    volume: player.volume || 20,
+    filter: guildActiveFilter.get(guildId) || null,
+    paused: player.paused || false,
+    twentyfourseven: false,
+    isActive: true,
+  }).catch(() => {});
+
   await msg.edit(editPayload).catch(() => {});
 }
 
@@ -257,3 +273,4 @@ export async function buildNowPlayingPayload(
 
   return { container, attachment: mediaAttachment };
 }
+

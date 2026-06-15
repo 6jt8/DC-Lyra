@@ -36,6 +36,7 @@ import { applyFilterByKey } from "./player-filters.js";
 import { getAutoplayCollection, getPlaylistCollection, incrementGlobalPlays, dbConnected } from "../database/database.js";
 import { cleanupPreviousTrackMessages, getTextChannel } from "./player-message-utils.js";
 import { clearProgressUpdates, startProgressUpdates } from "./player-lifecycle.js";
+import { savePlayerSession, deletePlayerSession } from "../database/player-sessions.js";
 import {
   activateMaintenanceMode,
   clearMaintenanceMode,
@@ -424,11 +425,11 @@ export async function initializePlayer(client: any): Promise<void> {
       let cardBufferForCache: Buffer | null = null;
 
       if (useGeneratedSongCard && config.lowMemoryMode !== true) {
-        let thumbnailURL = track.info.thumbnail || "";
+        let thumbnailURL = typeof track.info?.thumbnail === "string" ? track.info.thumbnail : "";
         const trackUri = track.info.uri || "";
 
         if (
-          (!thumbnailURL ||
+          (typeof thumbnailURL !== "string" ||
             !thumbnailURL.startsWith("http")) &&
           trackUri
         ) {
@@ -594,6 +595,20 @@ export async function initializePlayer(client: any): Promise<void> {
       }
 
       setupCollector(client, player, channel, message);
+
+      savePlayerSession(guildId, {
+        voiceChannelId: player.voiceChannel,
+        textChannelId: channel.id,
+        messageId: message.id,
+        trackEncoded: track.track || null,
+        position: 0,
+        loopMode: player.loop || 'none',
+        volume: player.volume || 20,
+        filter: guildActiveFilter.get(guildId) || null,
+        paused: player.paused || false,
+        twentyfourseven: false,
+        isActive: true,
+      }).catch(() => {});
     } catch (error: any) {
       const langSync = getLangSync();
       console.error(
@@ -825,3 +840,4 @@ export async function initializePlayer(client: any): Promise<void> {
     }
   });
 }
+

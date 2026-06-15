@@ -4,11 +4,11 @@ import path from "path";
 
 const defaultNodes = [
   {
-    name: "NexCloud V4",
-    password: "nexcloud",
-    host: "n3.nexcloud.in",
-    port: 2026,
-    secure: false,
+    name: "Jirayu",
+    password: "youshallnotpass",
+    host: "lavalink.jirayu.net",
+    port: 443,
+    secure: true,
   },
   {
     name: "Serenetia V4 SSL",
@@ -23,6 +23,20 @@ const defaultNodes = [
     host: "lavalinkv4.serenetia.com",
     port: 80,
     secure: false,
+  },
+  {
+    name: "Millohost V4",
+    password: "https://discord.gg/mjS5J2K3ep",
+    host: "lava-v4.millohost.my.id",
+    port: 443,
+    secure: true,
+  },
+  {
+    name: "TriniumHost V4",
+    password: "free",
+    host: "lavalink-v4.triniumhost.com",
+    port: 443,
+    secure: true,
   },
 ];
 

@@ -11,6 +11,7 @@ import {
   sendMessageWithPermissionsCheck,
 } from "./player-ui.js";
 import { stopCollector, restartCollector } from "./player-store.js";
+import { deletePlayerSession } from "../database/player-sessions.js";
 import { config } from "../config.js";
 import { deleteMessageIfExists, getTextChannel } from "./player-message-utils.js";
 import {
@@ -158,3 +159,4 @@ export async function refreshNowPlayingPanel(
     await deleteAndSendNowPlaying(client, guildId);
   }
 }
+

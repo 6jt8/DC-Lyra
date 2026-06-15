@@ -198,6 +198,33 @@ export default {
 
 
 
+            const voiceConnected = await waitForPlayerConnection(player, 20000);
+            if (!voiceConnected) {
+                let retryConnected = false;
+                for (let retry = 0; retry < 2; retry++) {
+                    try {
+                        if (player && !player.destroyed) player.destroy();
+                    } catch (_) {}
+                    await new Promise(res => setTimeout(res, 1000));
+                    await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
+                    await nodeManager.ensureNodeAvailable();
+                    try {
+                        player = client.riffy.createConnection({
+                            guildId: interaction.guildId,
+                            voiceChannel: userVoiceChannel,
+                            textChannel: interaction.channelId,
+                            deaf: true,
+                            defaultVolume: 20
+                        });
+                        retryConnected = await waitForPlayerConnection(player, 15000);
+                        if (retryConnected) break;
+                    } catch (_) {}
+                }
+                if (!retryConnected) {
+                    throw new Error('Voice connection was not established. The bot did not join the voice channel.');
+                }
+            }
+
             let tracksToQueue: string[] = [];
             let isPlaylist = false;
 
@@ -343,10 +370,6 @@ export default {
                 );
             }
 
-            const connected = await waitForPlayerConnection(player);
-            if (!connected) {
-                throw new Error('Voice connection was not established. The bot did not join the voice channel.');
-            }
 
             if (!player.playing && !player.paused && player.queue.length > 0) {
                 for (let attempt = 0; attempt < 3; attempt++) {
@@ -418,3 +441,5 @@ export default {
     },
     requesters: requesters,
 };
+
+

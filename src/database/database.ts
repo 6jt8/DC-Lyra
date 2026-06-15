@@ -46,3 +46,9 @@ export function getLanguageCollection(): Collection {
 export function getStatsCollection(): Collection {
   return new Collection("stats");
 }
+
+
+
+export function getPlayerSessionsCollection(): Collection {
+  return new Collection("player_sessions");
+}
