@@ -1,4 +1,4 @@
-# Contributing to Lyra-MC
+# Contributing to DC-Lyra
 
 Thanks for your interest in contributing! This document covers the basics to get you started.
 
@@ -11,8 +11,8 @@ Thanks for your interest in contributing! This document covers the basics to get
 ## Development Setup
 
 ```bash
-git clone https://github.com/6jt8/Lyra-MC.git
-cd Lyra-MC
+git clone https://github.com/6jt8/DC-Lyra.git
+cd DC-Lyra
 bun install
 bun run build
 bun start
