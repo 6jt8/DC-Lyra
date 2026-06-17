@@ -43,6 +43,6 @@
   "optionalDependencies": {
     "better-sqlite3": "^12.10.0"
   },
-  "author": "sayrox106",
+  "author": "6jt8",
   "license": "AGPL-3.0"
 }

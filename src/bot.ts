@@ -400,7 +400,7 @@ app.listen(port, () => {
     `${colors.cyan}[ TIME ]${colors.reset} ${colors.gray}${new Date().toISOString().replace("T", " ").split(".")[0]}${colors.reset}`
   );
   console.log(
-    `${colors.cyan}[ USER ]${colors.reset} ${colors.yellow}sayrox106${colors.reset}`
+    `${colors.cyan}[ USER ]${colors.reset} ${colors.yellow}6jt8${colors.reset}`
   );
 });
 

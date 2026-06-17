@@ -1,14 +1,14 @@
 <p align="center">
-  <a href="https://github.com/sayrox106/Lyra-MC">
+  <a href="https://github.com/6jt8/Lyra-MC">
     <img src="https://capsule-render.vercel.app/api?type=waving&color=0:5865F2,100:e11d2e&height=200&section=header&text=Lyra&fontSize=80&fontAlignY=35&animation=twinkling&fontColor=fff" alt="Lyra" />
   </a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/sayrox106/Lyra-MC?style=flat&logo=github" alt="Stars">
-  <img src="https://img.shields.io/github/forks/sayrox106/Lyra-MC?style=flat&logo=github" alt="Forks">
-  <img src="https://img.shields.io/github/issues/sayrox106/Lyra-MC?style=flat&logo=github" alt="Issues">
-  <img src="https://img.shields.io/github/last-commit/sayrox106/Lyra-MC?logo=git&logoColor=fff" alt="Last Commit">
+  <img src="https://img.shields.io/github/stars/6jt8/Lyra-MC?style=flat&logo=github" alt="Stars">
+  <img src="https://img.shields.io/github/forks/6jt8/Lyra-MC?style=flat&logo=github" alt="Forks">
+  <img src="https://img.shields.io/github/issues/6jt8/Lyra-MC?style=flat&logo=github" alt="Issues">
+  <img src="https://img.shields.io/github/last-commit/6jt8/Lyra-MC?logo=git&logoColor=fff" alt="Last Commit">
   <img src="https://img.shields.io/badge/AGPL_3.0-FF4500?logo=gnu&logoColor=fff" alt="License">
 </p>
 
@@ -32,13 +32,13 @@
 <tr>
 <td width="50%" align="center" valign="middle">
 <img src="https://img.shields.io/badge/Stable-Release-2ea44f?style=for-the-badge" alt="Stable Release"><br><br>
-<a href="https://github.com/sayrox106/Lyra-MC/releases/latest">
+<a href="https://github.com/6jt8/Lyra-MC/releases/latest">
 <img src="https://img.shields.io/badge/Download-.zip-2ea44f?style=flat-square&v=1" alt="Download Stable">
 </a>
 </td>
 <td width="50%" align="center" valign="middle">
 <img src="https://img.shields.io/badge/Nightly-Dev-5865F2?style=for-the-badge" alt="Nightly"><br><br>
-<a href="https://github.com/sayrox106/Lyra-MC/releases">
+<a href="https://github.com/6jt8/Lyra-MC/releases">
 <img src="https://img.shields.io/badge/Nightly_Build-Auto_generated-5865F2?style=flat-square" alt="Nightly Build">
 </a>
 </td>
@@ -124,7 +124,7 @@ npm start
 <summary><b>📦 From Source</b></summary>
 
 ```bash
-git clone https://github.com/sayrox106/Lyra-MC.git
+git clone https://github.com/6jt8/Lyra-MC.git
 cd Lyra-MC
 bun install   # or: npm install
 bun run build # or: npm run build
@@ -165,14 +165,14 @@ bun start     # or: npm start
 <h2 align="center">🤝 Contributors</h2>
 
 <p align="center">
-  <a href="https://github.com/sayrox106/Lyra-MC/blob/main/CONTRIBUTING.md">
+  <a href="https://github.com/6jt8/Lyra-MC/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/How_to_Contribute-5865F2?style=flat-square" alt="How to Contribute">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/sayrox106/Lyra-MC/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=sayrox106/Lyra-MC" alt="Contributors">
+  <a href="https://github.com/6jt8/Lyra-MC/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=6jt8/Lyra-MC" alt="Contributors">
   </a>
 </p>
 
@@ -182,11 +182,11 @@ bun start     # or: npm start
 
 <p align="center">
   <b>AGPL-3.0</b> — see <a href="LICENSE">LICENSE</a><br>
-  Copyright (c) 2026 <a href="https://github.com/sayrox106">sayrox106</a>
+  Copyright (c) 2026 <a href="https://github.com/6jt8">6jt8</a>
 </p>
 
 <br>
 
 <p align="center">
-  Built with ❤️ by <a href="https://github.com/sayrox106">sayrox106</a>
+  Built with ❤️ by <a href="https://github.com/6jt8">6jt8</a>
 </p>

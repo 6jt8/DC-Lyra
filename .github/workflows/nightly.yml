@@ -85,7 +85,7 @@ jobs:
           while IFS= read -r line; do
             if echo "$line" | grep -qP 'Merge pull request #\d+ from [^/]+/'; then
               AUTHOR=$(echo "$line" | grep -oP 'from \K[^/]+')
-              if [ -n "${AUTHOR:-}" ] && [ "$AUTHOR" != "sayrox106" ] && ! echo "$AUTHOR" | grep -q '\['; then
+              if [ -n "${AUTHOR:-}" ] && [ "$AUTHOR" != "6jt8" ] && ! echo "$AUTHOR" | grep -q '\['; then
                 ALREADY_SEEN=false
                 for S in "${SEEN_AUTHORS[@]}"; do
                   if [ "$S" = "$AUTHOR" ]; then

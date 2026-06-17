@@ -11,7 +11,7 @@ Thanks for your interest in contributing! This document covers the basics to get
 ## Development Setup
 
 ```bash
-git clone https://github.com/sayrox106/Lyra-MC.git
+git clone https://github.com/6jt8/Lyra-MC.git
 cd Lyra-MC
 bun install
 bun run build

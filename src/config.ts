@@ -68,7 +68,7 @@ export const config: BotConfig = {
   activityType: process.env.ACTIVITY_TYPE || "PLAYING",
   links: {
     supportServer: "",
-    github: "https://github.com/sayrox106",
+    github: "https://github.com/6jt8",
     website: "",
   },
   embedTimeout: 5,
