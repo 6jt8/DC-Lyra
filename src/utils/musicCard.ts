@@ -165,7 +165,7 @@ export class EnhancedMusicCard {
     return { x: cardX, y: cardY, w: cardW, h: cardH };
   }
 
-  async drawThumbnail(ctx: any, cfg: any, card: any): Promise<{ x: number; y: number; size: number } | null> {
+  async drawThumbnail(ctx: any, cfg: any, card: any): Promise<{ x: number; y: number; size: number }> {
     const size = 200;
     const x = card.x + 24;
     const y = card.y + 50;
@@ -298,12 +298,13 @@ export class EnhancedMusicCard {
     ctx.fill();
     ctx.restore();
 
-    return null;
+    return { x, y, size };
   }
 
   drawTrackMeta(ctx: any, cfg: any, card: any, thumb: any): void {
-    const leftEdge = thumb ? thumb.x + thumb.size + 20 : card.x + 24;
+    const leftEdge = thumb.x + thumb.size + 20;
     const topY = card.y + 50;
+    const cardRight = card.x + card.w - 24;
 
     ctx.save();
 
@@ -321,7 +322,7 @@ export class EnhancedMusicCard {
     ctx.textAlign = "center";
     ctx.fillText("NOW PLAYING", badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-    const titleY = topY + 46;
+    const titleY = topY + 38;
     ctx.fillStyle = THEME.title;
     ctx.font = "bold 18px 'Inter', 'Segoe UI', system-ui, sans-serif";
     ctx.textBaseline = "top";
@@ -329,7 +330,7 @@ export class EnhancedMusicCard {
     const title = truncateText(cfg.songTitle, 34);
     ctx.fillText(title, leftEdge, titleY);
 
-    const artistY = titleY + 32;
+    const artistY = titleY + 26;
     ctx.fillStyle = THEME.artist;
     ctx.font = "13px 'Inter', 'Segoe UI', system-ui, sans-serif";
     const artist = truncateText(cfg.songArtist, 40);
@@ -349,17 +350,22 @@ export class EnhancedMusicCard {
     ctx.textAlign = "center";
     ctx.fillText("ARTIST", badgeArtistX + badgeArtistW / 2, badgeArtistY + badgeArtistH / 2);
 
-    const requesterY = artistY + 30;
-    ctx.fillStyle = THEME.requester;
-    ctx.font = "11px 'Inter', 'Segoe UI', system-ui, sans-serif";
-    const requester = truncateText(
+    const requesterY = artistY + 24;
+    const requesterText = truncateText(
       cfg.trackRequester ? `Requested by ${cfg.trackRequester}` : "",
       48
     );
-    ctx.fillText(requester, leftEdge, requesterY);
+    if (requesterText) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = THEME.requester;
+      ctx.font = "11px 'Inter', 'Segoe UI', system-ui, sans-serif";
+      const textWidth = ctx.measureText(requesterText).width;
+      const centerX = thumb.x + thumb.size + 20 + textWidth / 2;
+      ctx.fillText(requesterText, centerX, requesterY);
+    }
 
     const dur = formatDuration(cfg.totalDurationMs);
-    const cardRight = card.x + card.w - 24;
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
     ctx.fillStyle = "#8f8f8f";
@@ -367,7 +373,7 @@ export class EnhancedMusicCard {
     ctx.fillText(dur, cardRight, card.y + card.h - 36);
 
     if (cfg.showVisualizer !== false) {
-      const vizY = requesterY + 32;
+      const vizY = requesterY + 24;
       const vizX = leftEdge;
       const vizW = Math.min(cardRight - leftEdge, 300);
       const vizH = 28;
@@ -401,7 +407,7 @@ export class EnhancedMusicCard {
 function truncateText(text: string, maxLen: number): string {
   if (!text || typeof text !== "string") return "";
   if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen - 1) + "…";
+  return text.slice(0, maxLen - 1) + "ï¿½";
 }
 
 function generateErrorCard(message: string): Buffer {
