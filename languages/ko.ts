@@ -715,6 +715,31 @@ const lang: Record<string, any> = {
                 title: "## ❌ 오류",
                 message: "검색하는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요."
             }
+        },
+        loop: {
+            command: {
+                name: "loop",
+                description: "현재 큐의 반복 모드를 설정합니다"
+            },
+            track: {
+                title: "## 🔁 트랙 반복 켜짐",
+                message: "현재 트랙이 무한 반복됩니다.",
+                note: "비활성화하려면 `/loop off` 를 사용하세요."
+            },
+            queue: {
+                title: "## 🔁 큐 반복 켜짐",
+                message: "전체 큐가 반복됩니다.",
+                note: "비활성화하려면 `/loop off` 를 사용하세요."
+            },
+            off: {
+                title: "## ❌ 반복 꺼짐",
+                message: "반복이 비활성화되었습니다.",
+                note: "트랙이 순서대로 재생되고 큐가 끝나면 중지됩니다."
+            },
+            errors: {
+                title: "## ❌ 오류",
+                message: "반복 모드를 설정하는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요."
+            }
         }
     },
     playlist: {

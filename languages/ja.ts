@@ -715,6 +715,31 @@ const lang: Record<string, any> = {
                 title: "## ❌ エラー",
                 message: "検索中にエラーが発生しました。\n後でもう一度お試しください。"
             }
+        },
+        loop: {
+            command: {
+                name: "loop",
+                description: "現在のキューのループモードを設定します"
+            },
+            track: {
+                title: "## 🔁 トラックループ有効",
+                message: "現在のトラックが無限にループします。",
+                note: "無効にするには `/loop off` を使用してください。"
+            },
+            queue: {
+                title: "## 🔁 キューループ有効",
+                message: "キュー全体がループします。",
+                note: "無効にするには `/loop off` を使用してください。"
+            },
+            off: {
+                title: "## ❌ ループ無効",
+                message: "ループが無効になりました。",
+                note: "トラックは順番に再生され、キューが終了すると停止します。"
+            },
+            errors: {
+                title: "## ❌ エラー",
+                message: "ループモードの設定中にエラーが発生しました。\n後でもう一度お試しください。"
+            }
         }
     },
     playlist: {

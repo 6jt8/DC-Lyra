@@ -715,6 +715,31 @@ const lang: Record<string, any> = {
                 title: "## ❌ Error",
                 message: "Ocurrió un error al buscar.\nPor favor, inténtalo de nuevo más tarde."
             }
+        },
+        loop: {
+            command: {
+                name: "loop",
+                description: "Establecer el modo de repetición para la cola actual"
+            },
+            track: {
+                title: "## 🔁 Repetición de Canción Activada",
+                message: "La canción actual se repetirá indefinidamente.",
+                note: "Usa `/loop off` para desactivar la repetición."
+            },
+            queue: {
+                title: "## 🔁 Repetición de Cola Activada",
+                message: "Toda la cola se repetirá ahora.",
+                note: "Usa `/loop off` para desactivar la repetición."
+            },
+            off: {
+                title: "## ❌ Repetición Desactivada",
+                message: "La repetición ha sido desactivada.",
+                note: "Las canciones se reproducirán en orden y se detendrán cuando la cola termine."
+            },
+            errors: {
+                title: "## ❌ Error",
+                message: "Ocurrió un error al establecer el modo de repetición.\nPor favor, inténtalo de nuevo más tarde."
+            }
         }
     },
     playlist: {

@@ -713,7 +713,32 @@ const lang: Record<string, any> = {
             },
             errors: {
                 title: "## ❌ Fehler",
-                message: "Beim Suchen ist ein Fehler aufgetreten.\\nBitte versuche es später erneut."
+                message: "Beim Suchen ist ein Fehler aufgetreten.\nBitte versuche es später erneut."
+            }
+        },
+        loop: {
+            command: {
+                name: "loop",
+                description: "Wiederholungsmodus für die Warteschlange einstellen"
+            },
+            track: {
+                title: "## 🔁 Titel-Wiederholung Aktiviert",
+                message: "Der aktuelle Titel wird jetzt unbegrenzt wiederholt.",
+                note: "Verwende `/loop off` zum Deaktivieren."
+            },
+            queue: {
+                title: "## 🔁 Warteschlangen-Wiederholung Aktiviert",
+                message: "Die gesamte Warteschlange wird jetzt wiederholt.",
+                note: "Verwende `/loop off` zum Deaktivieren."
+            },
+            off: {
+                title: "## ❌ Wiederholung Deaktiviert",
+                message: "Die Wiederholung wurde deaktiviert.",
+                note: "Titel werden in Reihenfolge abgespielt und stoppen am Ende der Warteschlange."
+            },
+            errors: {
+                title: "## ❌ Fehler",
+                message: "Beim Einstellen des Wiederholungsmodus ist ein Fehler aufgetreten.\nBitte versuche es später erneut."
             }
         }
     },

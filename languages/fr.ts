@@ -713,7 +713,32 @@ const lang: Record<string, any> = {
             },
             errors: {
                 title: "## ❌ Erreur",
-                message: "Une erreur s'est produite lors de la recherche.\\nVeuillez réessayer plus tard."
+                message: "Une erreur s'est produite lors de la recherche.\nVeuillez réessayer plus tard."
+            }
+        },
+        loop: {
+            command: {
+                name: "loop",
+                description: "Définir le mode de répétition pour la file d'attente"
+            },
+            track: {
+                title: "## 🔁 Répétition du Morceau Activée",
+                message: "Le morceau actuel sera répété indéfiniment.",
+                note: "Utilise `/loop off` pour désactiver."
+            },
+            queue: {
+                title: "## 🔁 Répétition de la File Activée",
+                message: "Toute la file d'attente sera maintenant répétée.",
+                note: "Utilise `/loop off` pour désactiver."
+            },
+            off: {
+                title: "## ❌ Répétition Désactivée",
+                message: "La répétition a été désactivée.",
+                note: "Les morceaux joueront dans l'ordre et s'arrêteront à la fin de la file."
+            },
+            errors: {
+                title: "## ❌ Erreur",
+                message: "Une erreur est survenue lors du réglage du mode de répétition.\nVeuillez réessayer plus tard."
             }
         }
     },

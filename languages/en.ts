@@ -746,6 +746,31 @@ const lang: Record<string, any> = {
                 title: "## ❌ Error",
                 message: "An error occurred while searching.\nPlease try again later."
             }
+        },
+        loop: {
+            command: {
+                name: "loop",
+                description: "Set the loop mode for the current queue"
+            },
+            track: {
+                title: "## 🔁 Track Loop Enabled",
+                message: "The current track will now loop indefinitely.",
+                note: "Use `/loop off` to disable looping."
+            },
+            queue: {
+                title: "## 🔁 Queue Loop Enabled",
+                message: "The entire queue will now loop.",
+                note: "Use `/loop off` to disable looping."
+            },
+            off: {
+                title: "## ❌ Loop Disabled",
+                message: "Looping has been disabled.",
+                note: "Tracks will play in order and stop when the queue ends."
+            },
+            errors: {
+                title: "## ❌ Error",
+                message: "An error occurred while setting loop mode.\nPlease try again later."
+            }
         }
     },
     playlist: {
