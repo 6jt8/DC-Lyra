@@ -75,7 +75,7 @@ export async function deleteAndSendNowPlaying(
     .fetch(stored.messageId)
     .catch(() => null);
   if (oldMsg) {
-    await oldMsg.delete().catch(() => {});
+    await oldMsg.delete().catch((e: any) => console.warn("[PLAYER] Failed to delete old now-playing:", e?.message));
   }
 
   const { mediaUrl, mediaAttachment } = await resolveMediaForGuild(
