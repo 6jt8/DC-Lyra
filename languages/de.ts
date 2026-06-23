@@ -337,6 +337,25 @@ const lang: Record<string, any> = {
                 message: "Beim Überspringen des Songs ist ein Fehler aufgetreten.\\nBitte versuche es später erneut."
             }
         },
+        previous: {
+            command: {
+                name: "previous",
+                description: "Den vorherigen Titel erneut abspielen"
+            },
+            noPrevious: {
+                title: "## ❌ Kein Vorheriger Titel",
+                message: "Es gibt keinen vorherigen Titel zum Abspielen.",
+                note: "Spiele zuerst ein paar Songs, um eine Historie aufzubauen."
+            },
+            success: {
+                title: "## ⏮️ Vorheriger Titel wird abgespielt",
+                message: "Der vorherige Titel wird jetzt abgespielt"
+            },
+            errors: {
+                title: "## ❌ Fehler",
+                message: "Beim Abspielen des vorherigen Titels ist ein Fehler aufgetreten.\nBitte versuche es später erneut."
+            }
+        },
         clear: {
             command: {
                 name: "clear",

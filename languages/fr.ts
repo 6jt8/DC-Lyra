@@ -337,6 +337,25 @@ const lang: Record<string, any> = {
                 message: "Une erreur s'est produite lors du passage de la chanson.\\nVeuillez réessayer plus tard."
             }
         },
+        previous: {
+            command: {
+                name: "previous",
+                description: "Rejouer le morceau précédent"
+            },
+            noPrevious: {
+                title: "## ❌ Aucun Morceau Précédent",
+                message: "Il n'y a aucun morceau précédent à jouer.",
+                note: "Joue d'abord quelques morceaux pour créer un historique."
+            },
+            success: {
+                title: "## ⏮️ Morceau Précédent",
+                message: "Lecture du morceau précédent"
+            },
+            errors: {
+                title: "## ❌ Erreur",
+                message: "Une erreur est survenue lors de la lecture du morceau précédent.\nVeuillez réessayer plus tard."
+            }
+        },
         clear: {
             command: {
                 name: "clear",

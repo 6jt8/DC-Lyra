@@ -337,6 +337,25 @@ const lang: Record<string, any> = {
                 message: "노래를 건너뛰는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요."
             }
         },
+        previous: {
+            command: {
+                name: "previous",
+                description: "이전 트랙을 다시 재생합니다"
+            },
+            noPrevious: {
+                title: "## ❌ 이전 트랙 없음",
+                message: "재생할 이전 트랙이 없습니다.",
+                note: "먼저 노래를 재생하여 기록을 쌓으세요."
+            },
+            success: {
+                title: "## ⏮️ 이전 트랙 재생 중",
+                message: "이전 트랙을 재생합니다"
+            },
+            errors: {
+                title: "## ❌ 오류",
+                message: "이전 트랙을 재생하는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요."
+            }
+        },
         clear: {
             command: {
                 name: "clear",

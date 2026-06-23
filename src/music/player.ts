@@ -11,7 +11,7 @@ import { cardFromMessage } from "../ui/responseHandler.js";
 import { getLangSync, getLang } from "../utils/language.js";
 import { EnhancedMusicCard } from "../utils/musicCard.js";
 import { initializeLavalinkManager, getLavalinkManager } from "./lavalink.js";
-import { requesters } from "./player-store.js";
+import { requesters, previousTrackMap } from "./player-store.js";
 import { voteSkipMap } from "../commands/music/voteskip.js";
 import {
   guildTrackMessages,
@@ -678,9 +678,10 @@ export async function initializePlayer(client: any): Promise<void> {
     }
   });
 
-  client.riffy.on("trackEnd", async (player: any) => {
+  client.riffy.on("trackEnd", async (player: any, track: any) => {
     try {
       const guildId = player.guildId;
+      if (track?.info) previousTrackMap.set(guildId, track);
       clearTrackMediaCache(guildId);
       voteSkipMap.delete(guildId);
 

@@ -7,6 +7,7 @@ export const interactionCollectors = new Map<string, any>();
 export const guildActiveFilter = new Map<string, string | null>();
 export const guildTrackMediaCache = new Map<string, any>();
 export const requesters = new Map<string, string>();
+export const previousTrackMap = new Map<string, any>();
 
 const COMMAND_MENTION_CACHE_TTL_MS = 5 * 60 * 1000;
 let commandMentionCache: {

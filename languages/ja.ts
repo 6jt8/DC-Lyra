@@ -337,6 +337,25 @@ const lang: Record<string, any> = {
                 message: "曲のスキップ中にエラーが発生しました。\n後でもう一度お試しください。"
             }
         },
+        previous: {
+            command: {
+                name: "previous",
+                description: "前のトラックをもう一度再生します"
+            },
+            noPrevious: {
+                title: "## ❌ 前のトラックがありません",
+                message: "再生する前のトラックがありません。",
+                note: "最初にいくつか曲を再生して履歴を構築してください。"
+            },
+            success: {
+                title: "## ⏮️ 前のトラックを再生中",
+                message: "前のトラックを再生しています"
+            },
+            errors: {
+                title: "## ❌ エラー",
+                message: "前のトラックの再生中にエラーが発生しました。\n後でもう一度お試しください。"
+            }
+        },
         clear: {
             command: {
                 name: "clear",

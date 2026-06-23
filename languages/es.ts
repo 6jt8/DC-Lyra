@@ -337,6 +337,25 @@ const lang: Record<string, any> = {
                 message: "Ocurrió un error al saltar la canción.\nPor favor, inténtalo de nuevo más tarde."
             }
         },
+        previous: {
+            command: {
+                name: "previous",
+                description: "Reproducir la canción anterior nuevamente"
+            },
+            noPrevious: {
+                title: "## ❌ Sin Canción Anterior",
+                message: "No hay una canción anterior para reproducir.",
+                note: "Reproduce algunas canciones primero para construir un historial."
+            },
+            success: {
+                title: "## ⏮️ Reproduciendo Canción Anterior",
+                message: "Ahora reproduciendo la canción anterior"
+            },
+            errors: {
+                title: "## ❌ Error",
+                message: "Ocurrió un error al reproducir la canción anterior.\nPor favor, inténtalo de nuevo más tarde."
+            }
+        },
         clear: {
             command: {
                 name: "clear",

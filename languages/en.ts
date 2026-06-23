@@ -368,6 +368,25 @@ const lang: Record<string, any> = {
                 message: "An error occurred while skipping the song.\nPlease try again later."
             }
         },
+        previous: {
+            command: {
+                name: "previous",
+                description: "Play the previous track again"
+            },
+            noPrevious: {
+                title: "## ❌ No Previous Track",
+                message: "There is no previous track to play.",
+                note: "Play some songs first to build up a history."
+            },
+            success: {
+                title: "## ⏮️ Playing Previous Track",
+                message: "Now playing the previous track"
+            },
+            errors: {
+                title: "## ❌ Error",
+                message: "An error occurred while playing the previous track.\nPlease try again later."
+            }
+        },
         clear: {
             command: {
                 name: "clear",
