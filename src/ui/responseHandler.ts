@@ -15,6 +15,12 @@ export function stripLeadingIcons(text: string): string {
     .trim();
 }
 
+export function sanitizeMentions(text: string): string {
+  return String(text || "")
+    .replace(/@everyone/g, "@\u200Beveryone")
+    .replace(/@here/g, "@\u200Bhere");
+}
+
 export function sanitizeTitle(rawTitle: string, fallback = "Response"): string {
   const firstLine = String(rawTitle || "")
     .replace(/\r/g, "")
@@ -23,7 +29,7 @@ export function sanitizeTitle(rawTitle: string, fallback = "Response"): string {
   const clean = stripLeadingIcons(
     firstLine.replace(/^#{1,6}\s*/, "").trim()
   );
-  return clean || fallback;
+  return sanitizeMentions(clean || fallback);
 }
 
 function titleHasIcon(title: string): boolean {

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { requesters } from '../../music/player-store.js';
-import { sendErrorResponse, handleCommandError, safeDeferReply, safeDeferUpdate, buildPaleCard, sanitizeTitle, stripLeadingIcons } from '../../ui/responseHandler.js';
+import { sendErrorResponse, handleCommandError, safeDeferReply, safeDeferUpdate, buildPaleCard, sanitizeTitle, sanitizeMentions, stripLeadingIcons } from '../../ui/responseHandler.js';
 import { checkVoiceChannel as checkVC } from '../../utils/voiceChannel.js';
 import { getLavalinkManager } from '../../music/lavalink.js';
 import { getLang } from '../../utils/language.js';
@@ -191,7 +191,7 @@ export default {
             const searchResults = tracks.map((track: any, index: number) => {
                 return t.results.track
                     .replace('{number}', index + 1)
-                    .replace('{title}', track.info.title)
+                    .replace('{title}', sanitizeMentions(track.info.title))
                     .replace('{uri}', track.info.uri)
                     .replace('{author}', track.info.author || 'Unknown')
                     .replace('{duration}', formatDuration(track.info.length));

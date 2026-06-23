@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { checkVoiceChannel } from '../../utils/voiceChannel.js';
 import { checkQueueOrTrack } from '../../utils/playerValidation.js';
-import { handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle, stripLeadingIcons } from '../../ui/responseHandler.js';
+import { handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle, sanitizeMentions, stripLeadingIcons } from '../../ui/responseHandler.js';
 import { getLang } from '../../utils/language.js';
 import { getEmoji, getButtonEmoji } from '../../emoji/emoji.js';
 
@@ -73,7 +73,7 @@ export default {
                     queueItems.push(
                         `${getEmoji('music')} ` + t.trackNumber.replace('{number}', position) + ' ' +
                         t.track
-                            .replace('{title}', track.info.title)
+                            .replace('{title}', sanitizeMentions(track.info.title))
                             .replace('{uri}', track.info.uri) + '\n   ' +
                         `${getEmoji('users')} ` + t.requestedBy.replace('{requester}', track.info.requester || 'Unknown')
                     );

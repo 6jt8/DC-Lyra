@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { checkVoiceChannel } from '../../utils/voiceChannel.js';
 import { checkQueue } from '../../utils/playerValidation.js';
-import { sendErrorResponse, sendSuccessResponse, handleCommandError, safeDeferReply } from '../../ui/responseHandler.js';
+import { sendErrorResponse, sendSuccessResponse, handleCommandError, safeDeferReply, sanitizeMentions } from '../../ui/responseHandler.js';
 import { getLang } from '../../utils/language.js';
 import { cleanupTrackMessages } from '../../music/player-cleanup.js';
 
@@ -73,7 +73,7 @@ export default {
                 interaction,
                 t.success.title + '\n\n' +
                 t.success.track
-                    .replace('{title}', track.info.title)
+                    .replace('{title}', sanitizeMentions(track.info.title))
                     .replace('{uri}', track.info.uri) + '\n' +
                 t.success.position.replace('{position}', position) + '\n\n' +
                 t.success.message

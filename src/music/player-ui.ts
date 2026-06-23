@@ -13,7 +13,7 @@ import {
   TextInputStyle,
 } from "discord.js";
 import { getEmoji, getButtonEmoji } from "../emoji/emoji.js";
-import { cardFromMessage } from "../ui/responseHandler.js";
+import { cardFromMessage, sanitizeMentions } from "../ui/responseHandler.js";
 import { config } from "../config.js";
 import { getLangSync, getLang } from "../utils/language.js";
 import {
@@ -196,8 +196,8 @@ export function buildNowPlayingContainer(
   if (showTitleBlock) {
     container.addTextDisplayComponents((textDisplay: any) =>
       textDisplay.setContent(
-        `### ${titleIcon} ${track.info.title || "Unknown Title"}\n` +
-          `${byText} ${track.info.author || (t.trackInfo?.unknownArtist || "Unknown Artist")}`
+        `### ${titleIcon} ${sanitizeMentions(track.info.title || "Unknown Title")}\n` +
+          `${byText} ${sanitizeMentions(track.info.author || (t.trackInfo?.unknownArtist || "Unknown Artist"))}`
       )
     );
   }
