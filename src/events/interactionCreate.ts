@@ -2,6 +2,7 @@ import { InteractionType, MessageFlags } from "discord.js";
 import { colors } from "../ui/colors.js";
 import { getLang, getLangSync } from "../utils/language.js";
 import { safeDeferUpdate } from "../ui/responseHandler.js";
+import { checkRateLimit } from "../utils/rateLimit.js";
 
 export default async (client: any, interaction: any) => {
   try {
@@ -35,6 +36,17 @@ export default async (client: any, interaction: any) => {
       ) {
         return interaction?.reply({
           content: lang.events.interactionCreate.noPermission,
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      const rateCheck = checkRateLimit(interaction.user.id, 3, 5000);
+      if (!rateCheck.allowed) {
+        const lang = await getLang(interaction.guildId);
+        return interaction?.reply({
+          content: lang.events.interactionCreate.rateLimited
+            ?.replace('{seconds}', rateCheck.retryAfter) ||
+            `Please slow down. Try again in ${rateCheck.retryAfter} second(s).`,
           flags: MessageFlags.Ephemeral,
         });
       }

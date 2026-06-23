@@ -11,6 +11,9 @@ import { getLang } from '../../utils/language.js';
 import { getEmoji } from '../../emoji/emoji.js';
 import { requesters } from '../../music/player-store.js';
 import { cleanupTrackMessages } from '../../music/player-cleanup.js';
+import { ensurePlayerConnected } from '../../music/player-lifecycle.js';
+
+const MAX_QUEUE_SIZE = 500;
 
 const data = new SlashCommandBuilder()
   .setName("play")
@@ -318,15 +321,18 @@ export default {
                 if (resolve.loadType === 'playlist') {
                     isPlaylist = true;
                     for (const track of resolve.tracks) {
+                        if (player.queue.length >= MAX_QUEUE_SIZE) break;
                         track.info.requester = interaction.user.username;
                         player.queue.add(track);
                         requesters.set(track.info.uri, interaction.user.username);
                     }
                 } else if (resolve.loadType === 'search' || resolve.loadType === 'track') {
                     const track = resolve.tracks.shift();
-                    track.info.requester = interaction.user.username;
-                    player.queue.add(track);
-                    requesters.set(track.info.uri, interaction.user.username);
+                    if (player.queue.length < MAX_QUEUE_SIZE) {
+                        track.info.requester = interaction.user.username;
+                        player.queue.add(track);
+                        requesters.set(track.info.uri, interaction.user.username);
+                    }
                 } else {
                     return sendErrorResponse(
                         interaction,
@@ -346,6 +352,7 @@ export default {
                 try {
                     const resolve: any = await client.riffy.resolve({ query: trackQuery, requester: interaction.user.username });
                     if (resolve && resolve.tracks && resolve.tracks.length > 0) {
+                        if (player.queue.length >= MAX_QUEUE_SIZE) break;
                         const trackInfo = resolve.tracks[0];
                         player.queue.add(trackInfo);
                         requesters.set(trackInfo.info.uri, interaction.user.username);
@@ -373,7 +380,15 @@ export default {
 
             if (!player.playing && !player.paused && player.queue.length > 0) {
                 for (let attempt = 0; attempt < 3; attempt++) {
-                    if (!player || player.destroyed || !player.connection) {
+                    if (!player || player.destroyed) {
+                        await new Promise(r => setTimeout(r, 1500));
+                        continue;
+                    }
+                    const connected = await ensurePlayerConnected(
+                        player, client, interaction.guildId,
+                        userVoiceChannel, interaction.channelId, 8000
+                    );
+                    if (!connected) {
                         await new Promise(r => setTimeout(r, 1500));
                         continue;
                     }
@@ -382,8 +397,8 @@ export default {
                         break;
                     } catch (playErr: any) {
                         const msg = playErr?.message || "";
-                        if (attempt < 2 && (msg.includes("Player connection is not initiated") || msg.includes("null is not an object"))) {
-                            await new Promise(r => setTimeout(r, 1500));
+                        if (attempt < 2 && (msg.includes("Player connection is not initiated") || msg.includes("null is not an object") || msg.includes("DAVE") || msg.includes("external sender"))) {
+                            await new Promise(r => setTimeout(r, 2000));
                             continue;
                         }
                         throw playErr;

@@ -164,7 +164,9 @@ async function sendEphemeralReply(
       components: [container],
       flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
     });
-  } catch (_) {}
+  } catch (e: any) {
+    console.warn("[PLAYER] Failed to send ephemeral reply:", e?.message);
+  }
 }
 
 async function handleInteraction(
@@ -444,17 +446,20 @@ async function handlePlayerModalSubmit(
       let added = 0;
       if (resolve.loadType === "playlist") {
         for (const track of resolve.tracks) {
+          if (player.queue.length >= 500) break;
           track.info.requester = modal.user.username;
           player.queue.add(track);
           requesters.set(track.info.uri, modal.user.username);
           added++;
         }
       } else {
-        const track = resolve.tracks[0];
-        track.info.requester = modal.user.username;
-        player.queue.add(track);
-        requesters.set(track.info.uri, modal.user.username);
-        added = 1;
+        if (player.queue.length < 500) {
+          const track = resolve.tracks[0];
+          track.info.requester = modal.user.username;
+          player.queue.add(track);
+          requesters.set(track.info.uri, modal.user.username);
+          added = 1;
+        }
       }
 
       if (
