@@ -5,18 +5,7 @@ import { sendErrorResponse, handleCommandError, safeDeferReply, buildPaleCard, s
 import { checkVoiceChannel as checkVC } from '../../utils/voiceChannel.js';
 import { getLavalinkManager } from '../../music/lavalink.js';
 import { getLang } from '../../utils/language.js';
-import { cleanupTrackMessages } from '../../music/player-cleanup.js';
-
-async function waitForPlayerConnection(player: any, timeoutMs = 15000) {
-    const startedAt = Date.now();
-    while (Date.now() - startedAt < timeoutMs) {
-        if (player?.connected) {
-            return true;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 150));
-    }
-    return false;
-}
+import { createPlayerForGuild, destroyPlayerIfDifferentChannel, playWithRetries } from '../../music/player-connection.js';
 
 const data = new SlashCommandBuilder()
   .setName("playcustomplaylist")
@@ -103,67 +92,15 @@ export default {
             }
 
             const userVoiceChannel = interaction.member.voice.channelId;
-            
-            if (existingPlayer && existingPlayer.voiceChannel !== userVoiceChannel) {
-                try {
-                    await cleanupTrackMessages(client, existingPlayer);
-                    existingPlayer.queue.clear();
-                    existingPlayer.stop();
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    existingPlayer.destroy();
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                } catch (error) {
-                    console.error('Error destroying old player:', error);
-                    try {
-                        if (!existingPlayer.destroyed) {
-                            existingPlayer.destroy();
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                        }
-                    } catch (e) {}
-                }
-            }
 
-            await nodeManager.checkAllNodesHealth().catch(() => {});
-            await nodeManager.forceConnectAllNodes().catch(() => {});
-            await new Promise(res => setTimeout(res, 400));
-            let player: any;
-            let attempts = 0;
-            const maxAttempts = 3;
-            while (attempts < maxAttempts) {
-                await nodeManager.ensureNodeAvailable();
-                try {
-                    player = client.riffy.createConnection({
-                        guildId: interaction.guildId,
-                        voiceChannel: userVoiceChannel,
-                        textChannel: interaction.channelId,
-                        deaf: true,
-                        defaultVolume: 20
-                    });
-                    break;
-                } catch (err: any) {
-                    attempts++;
-                    const msg = err?.message || '';
-                    if (attempts < maxAttempts && (msg.includes('No nodes are available') || msg.includes('fetch failed'))) {
-                        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
-                        await nodeManager.ensureNodeAvailable();
-                        await new Promise(res => setTimeout(res, 700));
-                        continue;
-                    }
-                    if (attempts >= maxAttempts) {
-                        await nodeManager.refreshRiffy?.();
-                        await nodeManager.ensureNodeAvailable();
-                        player = client.riffy.createConnection({
-                            guildId: interaction.guildId,
-                            voiceChannel: userVoiceChannel,
-                            textChannel: interaction.channelId,
-                            deaf: true,
-                            defaultVolume: 20
-                        });
-                        break;
-                    }
-                    throw err;
-            }
-            }
+            await destroyPlayerIfDifferentChannel(client, existingPlayer, userVoiceChannel);
+
+            const player = await createPlayerForGuild(
+                client,
+                interaction.guildId,
+                userVoiceChannel,
+                interaction.channelId
+            );
 
 
 
@@ -202,29 +139,11 @@ export default {
                 }
             }
 
-            const connected = await waitForPlayerConnection(player);
-            if (!connected) {
-                throw new Error('Voice connection was not established. The bot did not join the voice channel.');
-            }
-
             if (!player.playing && !player.paused && player.queue.length > 0) {
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    if (!player || player.destroyed || !player.connection) {
-                        await new Promise(r => setTimeout(r, 1500));
-                        continue;
-                    }
-                    try {
-                        player.play();
-                        break;
-                    } catch (playErr: any) {
-                        const msg = playErr?.message || "";
-                        if (attempt < 2 && (msg.includes("Player connection is not initiated") || msg.includes("null is not an object"))) {
-                            await new Promise(r => setTimeout(r, 1500));
-                            continue;
-                        }
-                        throw playErr;
-                    }
-                }
+                await playWithRetries(
+                    player, client, interaction.guildId,
+                    userVoiceChannel, interaction.channelId
+                );
             } else if (player.queue.length === 0) {
                 return sendErrorResponse(
                     interaction,
