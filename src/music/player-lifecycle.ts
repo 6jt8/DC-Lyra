@@ -23,6 +23,41 @@ import {
 } from "./player-ui.js";
 import { savePlayerSession, deletePlayerSession } from "../database/player-sessions.js";
 
+export async function ensurePlayerConnected(
+  player: any,
+  client: any,
+  guildId: string,
+  voiceChannel: string,
+  textChannel: string,
+  maxWait = 10000
+): Promise<boolean> {
+  if (player?.connected) return true;
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < maxWait) {
+    if (player?.connected) return true;
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  try {
+    const newPlayer = client.riffy.createConnection({
+      guildId,
+      voiceChannel,
+      textChannel,
+      deaf: true,
+      defaultVolume: 20,
+    });
+    const waitStart = Date.now();
+    while (Date.now() - waitStart < 10000) {
+      if (newPlayer?.connected) return true;
+      await new Promise(r => setTimeout(r, 200));
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export function clearProgressUpdates(guildId: string): void {
   const intervalId = progressUpdateIntervals.get(guildId);
   if (intervalId) {

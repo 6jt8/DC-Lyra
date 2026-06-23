@@ -33,7 +33,9 @@ process.on("unhandledRejection", (error: any) => {
     (error.message.includes("track.info") ||
       error.message.includes("thumbnail") ||
       error.message.includes("player.restart is not a function") ||
-      error.message.includes("restart is not a function"))
+      error.message.includes("restart is not a function") ||
+      error.message.includes("DAVE") ||
+      error.message.includes("external sender"))
   ) {
     if (
       error.message.includes("player.restart") ||
@@ -41,6 +43,14 @@ process.on("unhandledRejection", (error: any) => {
     ) {
       console.warn(
         `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Ignoring Riffy reconnect bug: ${error.message}${colors.reset}`
+      );
+    }
+    if (
+      error.message.includes("DAVE") ||
+      error.message.includes("external sender")
+    ) {
+      console.warn(
+        `${colors.cyan}[ VOICE ]${colors.reset} ${colors.yellow}DAVE protocol error — connection may need recovery: ${error.message}${colors.reset}`
       );
     }
     return;
@@ -102,11 +112,11 @@ process.on("uncaughtException", (error: Error) => {
   );
 });
 
-function gracefulShutdown(signal: string): void {
+async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`\n${colors.yellow}[ SHUTDOWN ]${colors.reset} Received ${signal}. Cleaning up...`);
   if (client.statusManager) {
     client.statusManager.stopPresenceRefresh();
-    client.statusManager.onPlayerDisconnect().catch(() => {});
+    await client.statusManager.onPlayerDisconnect().catch(() => {});
   }
   if (client.riffy) {
     for (const [, player] of client.riffy.players) {
@@ -122,8 +132,12 @@ function gracefulShutdown(signal: string): void {
   progressUpdateIntervals.clear();
   guildTrackMessages.clear();
   nowPlayingMessages.clear();
+  try {
+    const { getAdapter } = await import('./database/manager.js');
+    getAdapter().disconnect?.();
+  } catch (_) {}
   client.destroy();
-  process.exit(0);
+  setTimeout(() => process.exit(0), 2000).unref();
 }
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
@@ -320,6 +334,40 @@ client.on("raw", (d: any) => {
     }
   }
   client.riffy.updateVoiceState(d);
+});
+
+client.on("voiceStateUpdate", (oldState: any, newState: any) => {
+  if (newState.member?.id !== client.user?.id) return;
+  const guildId = newState.guild?.id;
+  if (!guildId) return;
+  const player = client.riffy?.players?.get(guildId);
+  if (!player || player.destroyed) return;
+  const newChannelId = newState.channelId;
+  if (newChannelId && newChannelId !== player.voiceChannel) {
+    player.voiceChannel = newChannelId;
+    if (config.voiceDebug) {
+      console.log(`[ VOICE DEBUG ] Bot moved to channel ${newChannelId} in guild ${guildId}`);
+    }
+  }
+  if (!newChannelId && player.voiceChannel) {
+    if (config.voiceDebug) {
+      console.log(`[ VOICE DEBUG ] Bot disconnected from voice in guild ${guildId}`);
+    }
+  }
+});
+
+client.on("channelDelete", async (channel: any) => {
+  if (channel.type !== 2) return;
+  const guildId = channel.guild?.id;
+  if (!guildId) return;
+  const player = client.riffy?.players?.get(guildId);
+  if (!player || player.destroyed) return;
+  if (player.voiceChannel === channel.id) {
+    if (config.voiceDebug) {
+      console.log(`[ VOICE DEBUG ] Voice channel deleted in guild ${guildId}, cleaning up player`);
+    }
+    player.destroy();
+  }
 });
 
 client.on("guildDelete", async (guild: any) => {
