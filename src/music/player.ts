@@ -12,6 +12,7 @@ import { getLangSync, getLang } from "../utils/language.js";
 import { EnhancedMusicCard } from "../utils/musicCard.js";
 import { initializeLavalinkManager, getLavalinkManager } from "./lavalink.js";
 import { requesters } from "./player-store.js";
+import { voteSkipMap } from "../commands/music/voteskip.js";
 import {
   guildTrackMessages,
   nowPlayingMessages,
@@ -205,11 +206,11 @@ export async function initializePlayer(client: any): Promise<void> {
               components: [trackErrorCard],
               flags: MessageFlags.IsComponentsV2,
             })
-            .catch(() => {})
+            .catch((e: any) => console.warn("[PLAYER] Failed to send track error card:", e?.message))
             .then((msg: any) => {
               if (msg)
                 setTimeout(
-                  () => msg.delete().catch(() => {}),
+                  () => msg.delete().catch((e: any) => console.warn("[PLAYER] Failed to delete error card:", e?.message)),
                   5000
                 );
             });
@@ -228,15 +229,28 @@ export async function initializePlayer(client: any): Promise<void> {
           }
 
           if (player.queue && player.queue.length > 0) {
-            console.log(
-              `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track after exception for guild ${player?.guildId || "unknown"}${colors.reset}`
-            );
-            setTimeout(() => {
-              try { player.play(); } catch (e) {
-                console.error("[PLAYER] Error playing next track after exception:", e);
-              }
-            }, 1000);
-          }
+                            console.log(
+                              `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track after exception for guild ${player?.guildId || "unknown"}${colors.reset}`
+                            );
+                            setTimeout(async () => {
+                              try {
+                                if (!player.connected) {
+                                  const { ensurePlayerConnected } = await import('./player-lifecycle.js');
+                                  const connected = await ensurePlayerConnected(
+                                    player, client, player.guildId,
+                                    player.voiceChannel, player.textChannel, 8000
+                                  );
+                                  if (!connected) {
+                                    console.error(`[PLAYER] Could not recover connection for guild ${player.guildId} after track error`);
+                                    return;
+                                  }
+                                }
+                                player.play();
+                              } catch (e) {
+                                console.error("[PLAYER] Error playing next track after exception:", e);
+                              }
+                            }, 1000);
+                          }
         }
       } catch (err) {
         console.error("[PLAYER] Error in trackException handler:", err);
@@ -269,15 +283,28 @@ export async function initializePlayer(client: any): Promise<void> {
         }
 
         if (player.queue && player.queue.length > 0) {
-          console.log(
-            `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track in queue for guild ${guildId}${colors.reset}`
-          );
-          try {
-            player.play();
-          } catch (playError) {
-            console.error("[PLAYER] Error playing next track after stuck:", playError);
-          }
-        } else {
+                          console.log(
+                            `${colors.cyan}[ LAVALINK ]${colors.reset} ${colors.yellow}Skipping to next track in queue for guild ${guildId}${colors.reset}`
+                          );
+                          (async () => {
+                            try {
+                              if (!player.connected) {
+                                const { ensurePlayerConnected } = await import('./player-lifecycle.js');
+                                const connected = await ensurePlayerConnected(
+                                  player, client, player.guildId,
+                                  player.voiceChannel, player.textChannel, 8000
+                                );
+                                if (!connected) {
+                                  console.error(`[PLAYER] Could not recover connection for guild ${player.guildId} after track stuck`);
+                                  return;
+                                }
+                              }
+                              player.play();
+                            } catch (playError) {
+                              console.error("[PLAYER] Error playing next track after stuck:", playError);
+                            }
+                          })();
+                        } else {
           const channel = await getTextChannel(client, player.textChannel);
           if (channel) {
             const t = lang.console?.player || {};
@@ -308,8 +335,16 @@ export async function initializePlayer(client: any): Promise<void> {
         );
         const playerForGuild = client.riffy.players.get(guildId);
         if (playerForGuild && !playerForGuild.destroyed && playerForGuild.queue && playerForGuild.queue.length > 0) {
-          setTimeout(() => {
+          setTimeout(async () => {
             try {
+              if (!playerForGuild.connected) {
+                const { ensurePlayerConnected } = await import('./player-lifecycle.js');
+                const connected = await ensurePlayerConnected(
+                  playerForGuild, client, playerForGuild.guildId,
+                  playerForGuild.voiceChannel, playerForGuild.textChannel, 8000
+                );
+                if (!connected) return;
+              }
               playerForGuild.play();
             } catch (_) {}
           }, 1000);
@@ -344,10 +379,10 @@ export async function initializePlayer(client: any): Promise<void> {
       if (client.statusManager && track.info.title) {
         await client.statusManager
           .onTrackStart(guildId)
-          .catch(() => {});
+          .catch((e: any) => console.warn("[PLAYER] onTrackStart failed:", e?.message));
       }
 
-      incrementGlobalPlays().catch(() => {});
+      incrementGlobalPlays().catch((e: any) => console.warn("[PLAYER] incrementGlobalPlays failed:", e?.message));
 
     const channel =
       player?.textChannel
@@ -647,6 +682,7 @@ export async function initializePlayer(client: any): Promise<void> {
     try {
       const guildId = player.guildId;
       clearTrackMediaCache(guildId);
+      voteSkipMap.delete(guildId);
 
       if (client.statusManager) {
         await client.statusManager
@@ -668,6 +704,7 @@ export async function initializePlayer(client: any): Promise<void> {
         await getTextChannel(client, player.textChannel);
       const guildId = player.guildId;
       clearTrackMediaCache(guildId);
+      voteSkipMap.delete(guildId);
 
       if (!channel) {
         const lang = getLangSync();

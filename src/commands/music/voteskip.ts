@@ -8,7 +8,7 @@ const data = new SlashCommandBuilder()
   .setName("voteskip")
   .setDescription("Vote to skip the current track");
 
-const voteSkipMap = new Map<string, { voters: Set<string>; requiredVotes: number; trackUri: string }>();
+export const voteSkipMap = new Map<string, { voters: Set<string>; requiredVotes: number; trackUri: string }>();
 
 export default {
     data: data,

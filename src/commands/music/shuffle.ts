@@ -45,9 +45,13 @@ export default {
                 return reply;
             }
 
-            for (let i = player.queue.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [player.queue[i], player.queue[j]] = [player.queue[j], player.queue[i]];
+            if (typeof player.queue.shuffle === 'function') {
+                player.queue.shuffle();
+            } else {
+                for (let i = player.queue.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [player.queue[i], player.queue[j]] = [player.queue[j], player.queue[i]];
+                }
             }
 
             return await sendSuccessResponse(
