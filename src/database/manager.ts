@@ -10,7 +10,10 @@ export async function initDatabase(connectionString?: string): Promise<Adapter> 
   if (connectionString) {
     try {
       const pgAdapter = new PostgresAdapter(connectionString);
-      await pgAdapter.connect();
+      await Promise.race([
+        pgAdapter.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Connection timeout")), 10000)),
+      ]);
       adapter = pgAdapter;
       return adapter;
     } catch {
