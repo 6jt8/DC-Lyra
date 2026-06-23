@@ -34,7 +34,7 @@ import {
 import { setupCollector } from "./player-interaction.js";
 import { cleanupTrackMessages } from "./player-cleanup.js";
 import { applyFilterByKey } from "./player-filters.js";
-import { getAutoplayCollection, getPlaylistCollection, incrementGlobalPlays, dbConnected } from "../database/database.js";
+import { getAutoplayCollection, getPlaylistCollection, incrementGlobalPlays, isDbConnected } from "../database/database.js";
 import { cleanupPreviousTrackMessages, getTextChannel } from "./player-message-utils.js";
 import { clearProgressUpdates, startProgressUpdates } from "./player-lifecycle.js";
 import { savePlayerSession, deletePlayerSession } from "../database/player-sessions.js";
@@ -416,7 +416,7 @@ export async function initializePlayer(client: any): Promise<void> {
       }
     }
 
-    if (dbConnected && config.lowMemoryMode !== true) {
+    if (isDbConnected() && config.lowMemoryMode !== true) {
       try {
         const col = getPlaylistCollection()!;
         const playlist = await col.findOne({ guildId, name: "__HISTORY__" });

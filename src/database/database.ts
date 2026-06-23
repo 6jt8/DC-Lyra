@@ -1,7 +1,9 @@
 import { isConnected, getAdapter } from "./manager.js";
 import { Collection } from "./index.js";
 
-export const dbConnected = isConnected();
+export function isDbConnected(): boolean {
+  return isConnected();
+}
 
 export async function incrementGlobalPlays(): Promise<number> {
   try {
