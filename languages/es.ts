@@ -740,6 +740,21 @@ const lang: Record<string, any> = {
                 title: "## ❌ Error",
                 message: "Ocurrió un error al establecer el modo de repetición.\nPor favor, inténtalo de nuevo más tarde."
             }
+        },
+        leave: {
+            command: {
+                name: "leave",
+                description: "Hacer que el bot abandone el canal de voz"
+            },
+            success: {
+                title: "## 👋 Canal de Voz Abandonado",
+                message: "El bot ha abandonado el canal de voz.",
+                note: "Usa `/play` para empezar a reproducir música de nuevo."
+            },
+            errors: {
+                title: "## ❌ Error",
+                message: "Ocurrió un error al abandonar el canal de voz.\nPor favor, inténtalo de nuevo más tarde."
+            }
         }
     },
     playlist: {

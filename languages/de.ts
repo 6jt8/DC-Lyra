@@ -740,6 +740,21 @@ const lang: Record<string, any> = {
                 title: "## ❌ Fehler",
                 message: "Beim Einstellen des Wiederholungsmodus ist ein Fehler aufgetreten.\nBitte versuche es später erneut."
             }
+        },
+        leave: {
+            command: {
+                name: "leave",
+                description: "Bot aus dem Sprachkanal entfernen"
+            },
+            success: {
+                title: "## 👋 Sprachkanal verlassen",
+                message: "Der Bot hat den Sprachkanal verlassen.",
+                note: "Verwende `/play`, um wieder Musik abzuspielen."
+            },
+            errors: {
+                title: "## ❌ Fehler",
+                message: "Beim Verlassen des Sprachkanals ist ein Fehler aufgetreten.\nBitte versuche es später erneut."
+            }
         }
     },
     playlist: {

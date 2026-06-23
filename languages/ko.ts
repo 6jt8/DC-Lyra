@@ -740,6 +740,21 @@ const lang: Record<string, any> = {
                 title: "## ❌ 오류",
                 message: "반복 모드를 설정하는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요."
             }
+        },
+        leave: {
+            command: {
+                name: "leave",
+                description: "봇을 음성 채널에서 나가게 합니다"
+            },
+            success: {
+                title: "## 👋 음성 채널 떠남",
+                message: "봇이 음성 채널을 떠났습니다.",
+                note: "음악을 재생하려면 `/play` 를 사용하세요."
+            },
+            errors: {
+                title: "## ❌ 오류",
+                message: "음성 채널을 떠나는 중 오류가 발생했습니다.\n나중에 다시 시도해 주세요."
+            }
         }
     },
     playlist: {

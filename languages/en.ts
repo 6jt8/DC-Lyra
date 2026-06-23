@@ -771,6 +771,21 @@ const lang: Record<string, any> = {
                 title: "## ❌ Error",
                 message: "An error occurred while setting loop mode.\nPlease try again later."
             }
+        },
+        leave: {
+            command: {
+                name: "leave",
+                description: "Make the bot leave the voice channel"
+            },
+            success: {
+                title: "## 👋 Left Voice Channel",
+                message: "The bot has left the voice channel.",
+                note: "Use `/play` to start playing music again."
+            },
+            errors: {
+                title: "## ❌ Error",
+                message: "An error occurred while leaving the voice channel.\nPlease try again later."
+            }
         }
     },
     playlist: {

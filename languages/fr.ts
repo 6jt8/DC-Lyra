@@ -740,6 +740,21 @@ const lang: Record<string, any> = {
                 title: "## ❌ Erreur",
                 message: "Une erreur est survenue lors du réglage du mode de répétition.\nVeuillez réessayer plus tard."
             }
+        },
+        leave: {
+            command: {
+                name: "leave",
+                description: "Faire quitter le salon vocal au bot"
+            },
+            success: {
+                title: "## 👋 Salon Vocal Quitté",
+                message: "Le bot a quitté le salon vocal.",
+                note: "Utilise `/play` pour recommencer à jouer de la musique."
+            },
+            errors: {
+                title: "## ❌ Erreur",
+                message: "Une erreur est survenue en quittant le salon vocal.\nVeuillez réessayer plus tard."
+            }
         }
     },
     playlist: {

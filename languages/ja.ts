@@ -740,6 +740,21 @@ const lang: Record<string, any> = {
                 title: "## ❌ エラー",
                 message: "ループモードの設定中にエラーが発生しました。\n後でもう一度お試しください。"
             }
+        },
+        leave: {
+            command: {
+                name: "leave",
+                description: "ボットをボイスチャンネルから退出させます"
+            },
+            success: {
+                title: "## 👋 ボイスチャンネルを退出",
+                message: "ボットがボイスチャンネルを退出しました。",
+                note: "音楽を再生するには `/play` を使用してください。"
+            },
+            errors: {
+                title: "## ❌ エラー",
+                message: "ボイスチャンネルの退出中にエラーが発生しました。\n後でもう一度お試しください。"
+            }
         }
     },
     playlist: {
