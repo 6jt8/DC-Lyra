@@ -301,11 +301,18 @@ export class LavalinkNodeManager {
     return healthy;
   }
 
+  private connectLoopFailures = 0;
+
   startConnectLoop(): void {
     if (this.connectLoopInterval) return;
     this.connectLoopInterval = setInterval(async () => {
       try {
-        if (this.hasConnectedNodes()) return;
+        if (this.hasConnectedNodes()) {
+          this.connectLoopFailures = 0;
+          return;
+        }
+        this.connectLoopFailures++;
+        if (this.connectLoopFailures > 10) return;
         await this.reconnectNodesNow(5000);
       } catch (_) {}
     }, 10000);

@@ -1058,6 +1058,7 @@ const lang: Record<string, any> = {
             noGuild: "❌ **Cette commande ne peut être utilisée que sur un serveur.**",
             commandNotFound: "❌ **Commande non trouvée !**",
             noPermission: "❌ **Vous n'avez pas la permission d'utiliser cette commande.**",
+            rateLimited: "⏳ **Vous allez trop vite !**\nVeuillez attendre **{seconds}** seconde(s) avant d'utiliser une autre commande.",
             errorOccurred: "❌ **Une erreur s'est produite : {message}**",
             unexpectedError: "❌ **Une erreur inattendue s'est produite. Veuillez réessayer plus tard.**",
             errorTryAgain: "❌ Une erreur s'est produite. Veuillez réessayer."

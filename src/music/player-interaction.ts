@@ -143,6 +143,7 @@ export function setupCollector(
     if (!deferred && !i.deferred && !i.replied) return;
 
     await handleInteraction(client, i, player, channel);
+    collector.resetTimer();
   });
 
   collector.on("end", () => {
