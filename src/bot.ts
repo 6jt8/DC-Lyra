@@ -3,16 +3,13 @@ import { config } from "./config.js";
 import fs from "fs";
 import path from "path";
 import express from "express";
-import { GatewayDispatchEvents } from "discord.js";
 import { initializePlayer } from "./music/player.js";
 import { isConnected } from "./database/manager.js";
 import { colors } from "./ui/colors.js";
 import { getLavalinkManager } from "./music/lavalink.js";
 import { getLang, getLangSync } from "./utils/language.js";
 import { setClient, getAllAvailableEmojis } from "./emoji/emoji.js";
-import { cleanupTrackMessages } from "./music/player-cleanup.js";
-import { guildTrackMessages, nowPlayingMessages, progressUpdateIntervals, interactionCollectors } from "./music/player-store.js";
-import { stopCollector, restartCollector } from "./music/player-store.js";
+import { guildTrackMessages, nowPlayingMessages, progressUpdateIntervals, interactionCollectors, stopCollector } from "./music/player-store.js";
 import { restoreAllPlayerSessions } from "./music/player-session-restore.js";
 
 const client = new LyraClient();
@@ -314,81 +311,7 @@ const loadCommands = () => {
 
 loadCommands();
 
-client.on("raw", (d: any) => {
-  if (
-    ![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate].includes(
-      d.t
-    )
-  )
-    return;
-  if (config.voiceDebug === true) {
-    if (d.t === GatewayDispatchEvents.VoiceStateUpdate) {
-      const isBot = d.d?.user_id === client.user?.id;
-      console.log(
-        `[ VOICE DEBUG ] raw=${d.t} guild=${d.d?.guild_id || "null"} botUser=${isBot} channel=${d.d?.channel_id || "null"} sessionId=${d.d?.session_id ? "yes" : "no"}`
-      );
-    } else {
-      console.log(
-        `[ VOICE DEBUG ] raw=${d.t} guild=${d.d?.guild_id || "null"} endpoint=${d.d?.endpoint ? "yes" : "no"} token=${d.d?.token ? "yes" : "no"}`
-      );
-    }
-  }
-  client.riffy.updateVoiceState(d);
-});
 
-client.on("voiceStateUpdate", (oldState: any, newState: any) => {
-  if (newState.member?.id !== client.user?.id) return;
-  const guildId = newState.guild?.id;
-  if (!guildId) return;
-  const player = client.riffy?.players?.get(guildId);
-  if (!player || player.destroyed) return;
-  const newChannelId = newState.channelId;
-  if (newChannelId && newChannelId !== player.voiceChannel) {
-    player.voiceChannel = newChannelId;
-    if (config.voiceDebug) {
-      console.log(`[ VOICE DEBUG ] Bot moved to channel ${newChannelId} in guild ${guildId}`);
-    }
-  }
-  if (!newChannelId && player.voiceChannel) {
-    if (config.voiceDebug) {
-      console.log(`[ VOICE DEBUG ] Bot disconnected from voice in guild ${guildId}`);
-    }
-  }
-});
-
-client.on("channelDelete", async (channel: any) => {
-  if (channel.type !== 2) return;
-  const guildId = channel.guild?.id;
-  if (!guildId) return;
-  const player = client.riffy?.players?.get(guildId);
-  if (!player || player.destroyed) return;
-  if (player.voiceChannel === channel.id) {
-    if (config.voiceDebug) {
-      console.log(`[ VOICE DEBUG ] Voice channel deleted in guild ${guildId}, cleaning up player`);
-    }
-    player.destroy();
-  }
-});
-
-client.on("guildDelete", async (guild: any) => {
-  const guildId = guild.id;
-  const player = client.riffy?.players?.get(guildId);
-  if (player && !player.destroyed) {
-    await cleanupTrackMessages(client, player).catch(() => {});
-    client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
-    try {
-      player.destroy();
-    } catch (e) {
-      console.warn(`[GUILD DELETE] Error destroying player for ${guildId}:`, e);
-    }
-  } else {
-    client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
-  }
-  stopCollector(guildId);
-  progressUpdateIntervals.delete(guildId);
-  guildTrackMessages.delete(guildId);
-  nowPlayingMessages.delete(guildId);
-});
 
 client.login(config.token || process.env.TOKEN).catch((e: Error) => {
   const lang = getLangSync();
