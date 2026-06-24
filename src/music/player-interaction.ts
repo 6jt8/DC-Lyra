@@ -161,10 +161,17 @@ async function sendEphemeralReply(
 ): Promise<void> {
   const container = cardFromMessage(message, "Player Update");
   try {
-    await interaction.reply({
-      components: [container],
-      flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
-    });
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp({
+        components: [container],
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+      });
+    } else {
+      await interaction.reply({
+        components: [container],
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+      });
+    }
   } catch (e: any) {
     console.warn("[PLAYER] Failed to send ephemeral reply:", e?.message);
   }
