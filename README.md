@@ -139,6 +139,19 @@ bun start     # or: npm start
 
 <br>
 
+<h2 align="center">🔀 Dynamic Intent Toggle</h2>
+
+<p align="center">
+  Scale beyond Discord's 10k guild threshold. Set <code>USE_INTENTS=false</code> in <code>.env</code> to skip privileged intents and avoid verification.
+</p>
+
+<p align="center">
+  <code>USE_INTENTS=false</code> → slash + mention commands, no moderation<br>
+  <code>USE_INTENTS=true</code> → prefix commands (<code>!play</code>), full features
+</p>
+
+<br>
+
 <h2 align="center">🌐 Languages</h2>
 
 <p align="center">
