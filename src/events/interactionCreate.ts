@@ -4,7 +4,7 @@ import { getLang, getLangSync } from "../utils/language.js";
 import { safeDeferUpdate } from "../ui/responseHandler.js";
 import { checkRateLimit } from "../utils/rateLimit.js";
 
-export default async (client: any, interaction: any) => {
+export async function handleInteractionCreate(client: any, interaction: any) {
   try {
     if (interaction.type === InteractionType.ApplicationCommand) {
       if (!interaction?.guild) {
@@ -195,13 +195,15 @@ export default async (client: any, interaction: any) => {
             content: lang.events.interactionCreate.unexpectedError,
             flags: MessageFlags.Ephemeral,
           })
-          .catch(() => {});
-      }
-    } catch (replyError: any) {
-      console.error(
-        `${colors.cyan}[ INTERACTION ]${colors.reset} ${colors.red}${consoleLang.console?.events?.interaction?.failedToSendError || "Failed to send error message:"}${colors.reset}`,
-        replyError
-      );
-    }
-  }
-};
+           .catch(() => {});
+       }
+     } catch (replyError: any) {
+       console.error(
+         `${colors.cyan}[ INTERACTION ]${colors.reset} ${colors.red}${consoleLang.console?.events?.interaction?.failedToSendError || "Failed to send error message:"}${colors.reset}`,
+         replyError
+       );
+     }
+   }
+}
+
+export default handleInteractionCreate;

@@ -1,10 +1,12 @@
-import { Client, GatewayIntentBits, Collection } from "discord.js";
+import { Client, Collection } from "discord.js";
 import { config } from "../config.js";
+import { buildIntents } from "./intents.js";
 import { ApplicationEmojiManager } from "../emoji/manager.js";
 import path from "path";
 
 export class LyraClient extends Client {
   public config = config;
+  public readonly useIntents: boolean = config.useIntents ?? false;
   public commands = new Collection<string, any>();
   public commandsArray: any[] = [];
   public riffy: any = null;
@@ -16,9 +18,7 @@ export class LyraClient extends Client {
 
   constructor() {
     super({
-      intents: Object.keys(GatewayIntentBits).map(
-        (a) => (GatewayIntentBits as any)[a]
-      ),
+      intents: buildIntents(config.useIntents ?? false),
       allowedMentions: { parse: [], repliedUser: true },
       sweepers: {
         messages: {

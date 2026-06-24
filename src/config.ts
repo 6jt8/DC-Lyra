@@ -86,5 +86,6 @@ export const config: BotConfig = {
     emojiDir: "./icoms",
   },
   nodes: parsedNodes,
+  useIntents: process.env.USE_INTENTS === "true",
 };
 

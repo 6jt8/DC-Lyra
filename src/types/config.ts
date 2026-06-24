@@ -28,6 +28,7 @@ export interface BotConfig {
   enableVoiceChannelIdPatch?: boolean;
   applicationEmojis: ApplicationEmojiConfig;
   nodes: LavalinkNodeConfig[];
+  useIntents?: boolean;
 }
 
 export interface BotLinks {

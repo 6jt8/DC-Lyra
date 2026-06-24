@@ -1,7 +1,9 @@
 import { LyraClient } from "./client/LyraClient.js";
 import { config } from "./config.js";
 import fs from "fs";
+import fsp from "fs/promises";
 import path from "path";
+import { pathToFileURL } from "url";
 import express from "express";
 import { initializePlayer } from "./music/player.js";
 import { isConnected } from "./database/manager.js";
@@ -11,8 +13,21 @@ import { getLang, getLangSync } from "./utils/language.js";
 import { setClient, getAllAvailableEmojis } from "./emoji/emoji.js";
 import { guildTrackMessages, nowPlayingMessages, progressUpdateIntervals, interactionCollectors, stopCollector } from "./music/player-store.js";
 import { restoreAllPlayerSessions } from "./music/player-session-restore.js";
+import { CommandRouter } from "./routing/CommandRouter.js";
+import { SlashStrategy } from "./routing/strategies/SlashStrategy.js";
+import { PrefixStrategy } from "./routing/strategies/PrefixStrategy.js";
+import { MentionStrategy } from "./routing/strategies/MentionStrategy.js";
+
+const router = new CommandRouter();
+router.register(new SlashStrategy());
 
 const client = new LyraClient();
+
+if (config.useIntents) {
+  router.register(new PrefixStrategy("!", true));
+} else {
+  router.register(new MentionStrategy(client.user?.id ?? "0", true));
+}
 
 process.on("unhandledRejection", (error: any) => {
   const lang = getLangSync();
@@ -111,6 +126,7 @@ process.on("uncaughtException", (error: Error) => {
 
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`\n${colors.yellow}[ SHUTDOWN ]${colors.reset} Received ${signal}. Cleaning up...`);
+  router.deactivate(client);
   if (client.statusManager) {
     client.statusManager.stopPresenceRefresh();
     await client.statusManager.onPlayerDisconnect().catch(() => {});
@@ -239,19 +255,51 @@ client.on("clientReady", async () => {
     });
   }, 5000);
 
-fs.readdir(path.join(__dirname, "events"), (_err, files) => {
-  if (_err || !files) return;
-  files.forEach((file) => {
-    if (!file.endsWith(".js") && !file.endsWith(".ts")) return;
-    const mod = require(path.join(__dirname, "events", file));
-    const event = mod.default || mod;
-    let eventName = file.split(".")[0];
-    client.on(eventName, event.bind(null, client));
-    delete require.cache[require.resolve(path.join(__dirname, "events", file))];
-  });
-});
+const INTENT_GATED_EVENTS: Record<string, string> = {
+  message: "MessageContent",
+  presenceUpdate: "GuildPresences",
+  guildMemberAdd: "GuildMembers",
+  guildMemberRemove: "GuildMembers",
+  guildMemberUpdate: "GuildMembers",
+};
 
-const loadCommands = () => {
+async function loadEvents(): Promise<void> {
+  const eventsDir = path.resolve(process.cwd(), "src/events");
+  let files: string[];
+  try {
+    files = await fsp.readdir(eventsDir);
+  } catch {
+    return;
+  }
+
+  for (const file of files) {
+    if (!file.endsWith(".js") && !file.endsWith(".ts")) continue;
+
+    const eventName = path.basename(file, path.extname(file));
+
+    const requiredIntent = INTENT_GATED_EVENTS[eventName];
+    if (requiredIntent && !client.useIntents) {
+      console.log(`[EVENT] Skipping ${eventName}: requires ${requiredIntent} intent (USE_INTENTS=false)`);
+      continue;
+    }
+
+    const filePath = path.join(eventsDir, file);
+    const fileUrl = pathToFileURL(filePath).href;
+
+    try {
+      const mod = await import(fileUrl);
+      const event = mod.default || mod;
+      (client as any).on(eventName, event.bind(null, client));
+      console.log(`[EVENT] Registered: ${eventName}`);
+    } catch (error: any) {
+      console.error(`[EVENT] Failed to load ${eventName}: ${error.message}`);
+    }
+  }
+}
+
+loadEvents();
+
+function loadCommands() {
   const loadCommandsFromDir = (dir: string, category = "") => {
     const items = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -296,7 +344,7 @@ const loadCommands = () => {
     }
   };
 
-  const commandsDir = path.resolve(__dirname, config.commandsDir);
+  const commandsDir = path.resolve(process.cwd(), config.commandsDir);
   loadCommandsFromDir(commandsDir);
   const lang = getLangSync();
   console.log(
@@ -307,7 +355,7 @@ const loadCommands = () => {
       ) || `Total Commands Loaded: ${client.commands.size}`
     }${colors.reset}`
   );
-};
+}
 
 loadCommands();
 
