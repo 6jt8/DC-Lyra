@@ -394,7 +394,7 @@ if (isConnected()) {
 }
 
 const app = express();
-const port = config.port || process.env.PORT || 3000;
+const port = Number(config.port) || Number(process.env.PORT) || 3000;
 
 app.get("/", (req: any, res: any) => {
   const imagePath = path.join(__dirname, "../../index.html");
@@ -417,7 +417,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(500).send("Internal Server Error");
 });
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log("\n" + "─".repeat(40));
   console.log(`${colors.magenta}${colors.bright}🌐 SERVER STATUS${colors.reset}`);
   console.log("─".repeat(40));
