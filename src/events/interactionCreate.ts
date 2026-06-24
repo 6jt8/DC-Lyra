@@ -3,6 +3,7 @@ import { colors } from "../ui/colors.js";
 import { getLang, getLangSync } from "../utils/language.js";
 import { safeDeferUpdate } from "../ui/responseHandler.js";
 import { checkRateLimit } from "../utils/rateLimit.js";
+import { checkButtonCooldown } from "../utils/interaction.js";
 
 export async function handleInteractionCreate(client: any, interaction: any) {
   try {
@@ -84,6 +85,20 @@ export async function handleInteractionCreate(client: any, interaction: any) {
     }
 
     if (interaction.isButton()) {
+      const cooldown = checkButtonCooldown(
+        interaction.guildId || "global",
+        interaction.user.id
+      );
+      if (!cooldown.allowed) {
+        const sec = (cooldown.remaining / 1000).toFixed(1);
+        return interaction
+          .reply({
+            content: `⏱️ Please wait **${sec}s** before using another button.`,
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {});
+      }
+
       if (interaction.customId.startsWith("help_")) {
         try {
           const deferred = await safeDeferUpdate(interaction);

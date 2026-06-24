@@ -6,14 +6,14 @@ export default async (client: any, guild: any) => {
   const player = client.riffy?.players?.get(guildId);
   if (player && !player.destroyed) {
     await cleanupTrackMessages(client, player).catch(() => {});
-    client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
+    await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
     try {
       player.destroy();
     } catch (e) {
       console.warn(`[GUILD DELETE] Error destroying player for ${guildId}:`, e);
     }
   } else {
-    client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
+    await client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
   }
   stopCollector(guildId);
   progressUpdateIntervals.delete(guildId);

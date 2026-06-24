@@ -14,6 +14,8 @@ import { setClient, getAllAvailableEmojis } from "./emoji/emoji.js";
 import { guildTrackMessages, nowPlayingMessages, progressUpdateIntervals, interactionCollectors, stopCollector } from "./music/player-store.js";
 import { restoreAllPlayerSessions } from "./music/player-session-restore.js";
 import { CommandRouter } from "./routing/CommandRouter.js";
+import { createDashboardRouter } from "./dashboard/server.js";
+import { initWebhookLogger, logError } from "./utils/webhookLogger.js";
 import { SlashStrategy } from "./routing/strategies/SlashStrategy.js";
 import { PrefixStrategy } from "./routing/strategies/PrefixStrategy.js";
 import { MentionStrategy } from "./routing/strategies/MentionStrategy.js";
@@ -102,6 +104,7 @@ process.on("unhandledRejection", (error: any) => {
     lang.console?.bot?.unhandledRejection || "Unhandled Rejection:",
     error
   );
+  logError("Unhandled Rejection", error?.message || String(error)).catch(() => {});
 });
 
 process.on("uncaughtException", (error: Error) => {
@@ -297,7 +300,9 @@ async function loadEvents(): Promise<void> {
   }
 }
 
-loadEvents();
+loadEvents().catch((err: any) => {
+  console.error("[BOT] Failed to load events:", err?.message || err);
+});
 
 function loadCommands() {
   const loadCommandsFromDir = (dir: string, category = "") => {
@@ -390,6 +395,7 @@ if (isConnected()) {
 
 const app = express();
 const port = config.port || process.env.PORT || 3000;
+
 app.get("/", (req: any, res: any) => {
   const imagePath = path.join(__dirname, "../../index.html");
   res.sendFile(imagePath, (err: any) => {
@@ -399,6 +405,12 @@ app.get("/", (req: any, res: any) => {
     }
   });
 });
+
+if (config.dashboardEnabled !== false) {
+  const dashboardRouter = createDashboardRouter(client);
+  app.use(dashboardRouter);
+}
+
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error(`${colors.red}[ EXPRESS ]${colors.reset} Server error: ${err.message}`);
   if (res.headersSent) return;
@@ -422,6 +434,8 @@ app.listen(port, () => {
     `${colors.cyan}[ USER ]${colors.reset} ${colors.yellow}6jt8${colors.reset}`
   );
 });
+
+initWebhookLogger();
 
 export default client;
 

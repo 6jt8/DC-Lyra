@@ -123,7 +123,7 @@ export async function restoreAllPlayerSessions(client: any): Promise<void> {
                 const track = new Track(decoded, "System Restore", node);
                 player.queue.add(track);
                 if (!player.playing && !player.paused) {
-                  player.play();
+                  await player.play();
                 }
               }
             }

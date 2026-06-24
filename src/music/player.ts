@@ -9,7 +9,7 @@ import { colors } from "../ui/colors.js";
 
 import { cardFromMessage } from "../ui/responseHandler.js";
 import { getLangSync, getLang } from "../utils/language.js";
-import { EnhancedMusicCard } from "../utils/musicCard.js";
+import { EnhancedMusicCard, fetchTrackThumbnailBuffer } from "../utils/musicCard.js";
 import { initializeLavalinkManager, getLavalinkManager } from "./lavalink.js";
 import { requesters, previousTrackMap } from "./player-store.js";
 import { voteSkipMap } from "../commands/music/voteskip.js";
@@ -20,6 +20,7 @@ import {
   guildActiveFilter,
   getCommandMentionMap,
   stopCollector,
+  guildThumbnailCache,
 } from "./player-store.js";
 import {
   buildNowPlayingContainer,
@@ -174,7 +175,7 @@ export async function initializePlayer(client: any): Promise<void> {
             try { player.stop(); } catch (_) {}
             try { await cleanupTrackMessages(client, player); } catch (_) {}
             if (player.queue && player.queue.length > 0) {
-              setTimeout(() => { try { player.play(); } catch (_) {} }, 1000);
+              setTimeout(async () => { try { await player.play(); } catch (_) {} }, 1000);
             }
           }
           return;
@@ -201,19 +202,16 @@ export async function initializePlayer(client: any): Promise<void> {
               `${t.trackError?.skipping || "Skipping to next song..."}`,
             "Track Error"
           );
-          channel
-            .send({
-              components: [trackErrorCard],
-              flags: MessageFlags.IsComponentsV2,
-            })
-            .catch((e: any) => console.warn("[PLAYER] Failed to send track error card:", e?.message))
-            .then((msg: any) => {
-              if (msg)
-                setTimeout(
-                  () => msg.delete().catch((e: any) => console.warn("[PLAYER] Failed to delete error card:", e?.message)),
-                  5000
-                );
-            });
+          const sentCard = await channel.send({
+            components: [trackErrorCard],
+            flags: MessageFlags.IsComponentsV2,
+          }).catch((e: any) => {
+            console.warn("[PLAYER] Failed to send track error card:", e?.message);
+            return null;
+          });
+          if (sentCard) {
+            setTimeout(() => sentCard.delete().catch(() => {}), 5000);
+          }
         }
 
         if (player && !player.destroyed) {
@@ -245,7 +243,7 @@ export async function initializePlayer(client: any): Promise<void> {
                                     return;
                                   }
                                 }
-                                player.play();
+                                await player.play();
                               } catch (e) {
                                 console.error("[PLAYER] Error playing next track after exception:", e);
                               }
@@ -299,7 +297,7 @@ export async function initializePlayer(client: any): Promise<void> {
                                   return;
                                 }
                               }
-                              player.play();
+                              await player.play();
                             } catch (playError) {
                               console.error("[PLAYER] Error playing next track after stuck:", playError);
                             }
@@ -345,7 +343,7 @@ export async function initializePlayer(client: any): Promise<void> {
                 );
                 if (!connected) return;
               }
-              playerForGuild.play();
+              await playerForGuild.play();
             } catch (_) {}
           }, 1000);
         }
@@ -472,6 +470,10 @@ export async function initializePlayer(client: any): Promise<void> {
         }
 
         try {
+          const thumbBuffer = await fetchTrackThumbnailBuffer(trackUri, thumbnailURL);
+          if (thumbBuffer && thumbBuffer.length > 5000) {
+            guildThumbnailCache.set(guildId, { trackUri, buffer: thumbBuffer });
+          }
           const cardBuffer = await musicCard.generateCard({
             thumbnailURL: thumbnailURL,
             trackURI: trackUri,
@@ -484,6 +486,7 @@ export async function initializePlayer(client: any): Promise<void> {
               config.showVisualizer !== false,
             currentPositionMs: 0,
             totalDurationMs: track.info.length || 0,
+            thumbnailBuffer: thumbBuffer,
           });
           if (cardBuffer && cardBuffer.length > 0) {
             cardBufferForCache = cardBuffer;
@@ -683,6 +686,7 @@ export async function initializePlayer(client: any): Promise<void> {
       const guildId = player.guildId;
       if (track?.info) previousTrackMap.set(guildId, track);
       clearTrackMediaCache(guildId);
+      guildThumbnailCache.delete(guildId);
       voteSkipMap.delete(guildId);
 
       if (client.statusManager) {
@@ -737,8 +741,8 @@ export async function initializePlayer(client: any): Promise<void> {
               }));
               const t = lang.console?.player || {};
               if (is24_7) {
-                client.statusManager?.setDefaultStatus();
-                client.statusManager?.clearVoiceChannelStatus(guildId);
+                await client.statusManager?.setDefaultStatus().catch(() => {});
+                await client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
                 await sendTransientCard(
                   channel,
                   t.queueEnd?.twentyfoursevenEmpty ||
@@ -756,7 +760,7 @@ export async function initializePlayer(client: any): Promise<void> {
                 );
                 await new Promise(res => setTimeout(res, 60000));
                 if (player.queue.length === 0 && !player.playing) {
-                  client.statusManager?.onPlayerDisconnect(guildId);
+                  await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
                   player.destroy();
                 }
               }
@@ -772,8 +776,8 @@ export async function initializePlayer(client: any): Promise<void> {
           }));
           const t = lang.console?.player || {};
           if (is24_7) {
-            client.statusManager?.setDefaultStatus();
-            client.statusManager?.clearVoiceChannelStatus(guildId);
+            await client.statusManager?.setDefaultStatus().catch(() => {});
+            await client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
             await sendTransientCard(
               channel,
               t.queueEnd?.twentyfoursevenEmpty ||
@@ -791,7 +795,7 @@ export async function initializePlayer(client: any): Promise<void> {
             );
             await new Promise(res => setTimeout(res, 60000));
             if (player.queue.length === 0 && !player.playing) {
-              client.statusManager?.onPlayerDisconnect(guildId);
+              await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
               player.destroy();
             }
           }
@@ -811,8 +815,8 @@ export async function initializePlayer(client: any): Promise<void> {
           ) || `Autoplay is disabled for guild: ${guildId}`
         );
         if (is24_7) {
-          client.statusManager?.setDefaultStatus();
-          client.statusManager?.clearVoiceChannelStatus(guildId);
+          await client.statusManager?.setDefaultStatus().catch(() => {});
+          await client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
           await sendTransientCard(
             channel,
             t.queueEnd?.twentyfoursevenEmpty ||
@@ -830,7 +834,7 @@ export async function initializePlayer(client: any): Promise<void> {
           );
           await new Promise(res => setTimeout(res, 60000));
           if (player.queue.length === 0 && !player.playing) {
-            client.statusManager?.onPlayerDisconnect(guildId);
+            await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
             player.destroy();
           }
         }
@@ -859,7 +863,7 @@ export async function initializePlayer(client: any): Promise<void> {
       }));
       const t = lang.console?.player || {};
       if (!settings?.twentyfourseven && player && !player.destroyed) {
-        client.statusManager?.onPlayerDisconnect(guildId);
+        await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
         try { player.destroy(); } catch (_) {}
         const channel = await getTextChannel(client, player.textChannel).catch(() => null);
         if (channel) {
@@ -872,8 +876,8 @@ export async function initializePlayer(client: any): Promise<void> {
           );
         }
       } else if (player && !player.destroyed) {
-        client.statusManager?.clearVoiceChannelStatus(guildId);
-        client.statusManager?.setDefaultStatus();
+        await client.statusManager?.clearVoiceChannelStatus(guildId).catch(() => {});
+        await client.statusManager?.setDefaultStatus().catch(() => {});
       }
     }
   });

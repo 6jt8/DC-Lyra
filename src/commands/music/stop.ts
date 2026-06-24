@@ -35,7 +35,7 @@ export default {
 
             await cleanupTrackMessages(client, player);
 
-            client.statusManager?.onPlayerDisconnect(interaction.guildId);
+            await client.statusManager?.onPlayerDisconnect(interaction.guildId).catch(() => {});
 
             player.queue.clear();
             

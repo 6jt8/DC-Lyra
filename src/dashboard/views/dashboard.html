@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lyra Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #e11d2e, #ff6b6b);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: #e11d2e; }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .stat-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card.online .stat-value { color: #22c55e; }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      padding: 12px 16px;
+      background: #1a1a1a;
+      border-radius: 8px;
+      border: 1px solid #2a2a2a;
+    }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .status-text { font-size: 14px; font-weight: 600; color: #22c55e; }
+    .status-uptime { font-size: 13px; color: #888; margin-left: auto; }
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #ccc;
+    }
+    .players-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a1a1a;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+    }
+    .players-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      background: #141414;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .players-table td {
+      padding: 12px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #222;
+    }
+    .players-table tr:last-child td { border-bottom: none; }
+    .players-table tr:hover td { background: #222; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge.playing { background: #22c55e20; color: #22c55e; }
+    .badge.paused { background: #f59e0b20; color: #f59e0b; }
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: #555;
+      font-size: 14px;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 12px;
+      color: #444;
+    }
+    .footer a { color: #666; text-decoration: none; }
+    .footer a:hover { color: #e11d2e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Lyra</h1>
+    <p class="subtitle">Music Bot Dashboard</p>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span class="status-text" id="statusText">Online</span>
+      <span class="status-uptime" id="uptimeDisplay">Uptime: --</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card online">
+        <div class="stat-value" id="guildCount">--</div>
+        <div class="stat-label">Servers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="userCount">--</div>
+        <div class="stat-label">Users</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="playerCount">--</div>
+        <div class="stat-label">Active Players</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="pingDisplay">--</div>
+        <div class="stat-label">Ping (ms)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="memoryDisplay">--</div>
+        <div class="stat-label">Memory (MB)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="channelCount">--</div>
+        <div class="stat-label">Channels</div>
+      </div>
+    </div>
+
+    <div class="section-title">Active Players</div>
+    <table class="players-table">
+      <thead>
+        <tr>
+          <th>Guild</th>
+          <th>Track</th>
+          <th>Status</th>
+          <th>Queue</th>
+          <th>Volume</th>
+          <th>Loop</th>
+        </tr>
+      </thead>
+      <tbody id="playersBody">
+        <tr><td colspan="6" class="empty-state">No active players</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <a href="https://github.com/6jt8" target="_blank">GitHub</a>
+    </div>
+  </div>
+
+  <script>
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        document.getElementById('guildCount').textContent = data.guilds;
+        document.getElementById('userCount').textContent = data.users;
+        document.getElementById('playerCount').textContent = data.players;
+        document.getElementById('pingDisplay').textContent = data.ping;
+        document.getElementById('memoryDisplay').textContent = data.memory.heap;
+        document.getElementById('channelCount').textContent = data.channels;
+        document.getElementById('uptimeDisplay').textContent = 'Uptime: ' + data.uptime;
+        document.getElementById('statusText').textContent = data.status === 'online' ? 'Online' : 'Offline';
+
+        const secret = window._dashboardSecret;
+        if (secret && data.players > 0) {
+          const playerRes = await fetch('/api/players?secret=' + encodeURIComponent(secret));
+          if (playerRes.ok) {
+            const players = await playerRes.json();
+            const tbody = document.getElementById('playersBody');
+            if (players.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No active players</td></tr>';
+            } else {
+              tbody.innerHTML = players.map(p => {
+                const statusClass = p.paused ? 'paused' : 'playing';
+                const statusLabel = p.paused ? 'Paused' : 'Playing';
+                return '<tr>' +
+                  '<td>' + escapeHtml(p.guildId) + '</td>' +
+                  '<td>' + escapeHtml(p.current) + '</td>' +
+                  '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+                  '<td>' + p.queueLength + '</td>' +
+                  '<td>' + p.volume + '%</td>' +
+                  '<td>' + p.loop + '</td>' +
+                '</tr>';
+              }).join('');
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    fetchStats();
+    setInterval(fetchStats, 5000);
+  </script>
+</body>
+</html>

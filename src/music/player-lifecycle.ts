@@ -13,6 +13,7 @@ import {
   requesters,
   stopCollector,
   getCommandMentionMap,
+  guildThumbnailCache,
 } from "./player-store.js";
 import {
   buildNowPlayingContainer,
@@ -22,6 +23,7 @@ import {
   getTrackMediaCache,
 } from "./player-ui.js";
 import { savePlayerSession, deletePlayerSession } from "../database/player-sessions.js";
+import { EnhancedMusicCard, fetchTrackThumbnailBuffer } from "../utils/musicCard.js";
 
 export async function ensurePlayerConnected(
   player: any,
@@ -95,7 +97,7 @@ export async function cleanupPlayerAndDisconnect(
   resetGuildPlayerState(client, player);
 
   if (disconnect) {
-    client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
+    await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
   }
 
   if (!player || player.destroyed) return;
@@ -185,7 +187,7 @@ export async function editNowPlayingPanel(
   if (!msg) return;
 
   const { mediaUrl, mediaAttachment } = await resolveMediaForGuild(
-    client, guildId, channel, track
+    client, guildId, channel, track, player
   );
 
   const payload = await buildNowPlayingPayload(
@@ -222,34 +224,60 @@ export async function resolveMediaForGuild(
   client: any,
   guildId: string,
   channel: any,
-  track: any
+  track: any,
+  player: any
 ): Promise<{ mediaUrl: string | null; mediaAttachment: any }> {
   const canAttachFiles = channel.permissionsFor(
     channel.guild.members.me
   )?.has(PermissionsBitField.Flags.AttachFiles);
   const useGeneratedSongCard = config.generateSongCard !== false;
-  const cachedMedia = useGeneratedSongCard
-    ? getTrackMediaCache(guildId, track.info.uri)
-    : null;
 
   let mediaUrl: string | null = null;
   let mediaAttachment: any = null;
 
-  if (useGeneratedSongCard) {
-    if (cachedMedia?.cardBuffer && canAttachFiles) {
-      mediaAttachment = new AttachmentBuilder(
-        cachedMedia.cardBuffer,
-        { name: "song-banner.png" }
-      );
-      mediaUrl = "attachment://song-banner.png";
-    } else if (cachedMedia?.mediaUrl) {
+  if (useGeneratedSongCard && canAttachFiles && track?.info) {
+    const cachedThumb = guildThumbnailCache.get(guildId);
+    const thumbBuffer = (cachedThumb && cachedThumb.trackUri === track.info.uri)
+      ? cachedThumb.buffer
+      : null;
+
+    try {
+      const musicCard = new EnhancedMusicCard();
+      const cardBuffer = await musicCard.generateCard({
+        thumbnailURL: track.info.thumbnail || "",
+        trackURI: track.info.uri || "",
+        songTitle: track.info.title,
+        songArtist: track.info.author,
+        trackRequester: requesters.get(track.info.uri) || "Unknown",
+        isPlaying: !player?.paused,
+        showVisualizer: config.showVisualizer !== false,
+        currentPositionMs: player?.position || 0,
+        totalDurationMs: track.info.length || 0,
+        thumbnailBuffer: thumbBuffer,
+      });
+
+      if (cardBuffer && cardBuffer.length > 0) {
+        mediaAttachment = new AttachmentBuilder(cardBuffer, { name: "song-banner.png" });
+        mediaUrl = "attachment://song-banner.png";
+      }
+    } catch (e: any) {
+      const cachedMedia = getTrackMediaCache(guildId, track.info.uri);
+      if (cachedMedia?.cardBuffer && canAttachFiles) {
+        mediaAttachment = new AttachmentBuilder(cachedMedia.cardBuffer, { name: "song-banner.png" });
+        mediaUrl = "attachment://song-banner.png";
+      }
+    }
+  }
+
+  if (!mediaUrl) {
+    const cachedMedia = useGeneratedSongCard
+      ? getTrackMediaCache(guildId, track.info.uri)
+      : null;
+    if (cachedMedia?.mediaUrl) {
       mediaUrl = cachedMedia.mediaUrl;
     }
     if (!mediaUrl && cachedMedia?.cardBuffer && canAttachFiles) {
-      mediaAttachment = new AttachmentBuilder(
-        cachedMedia.cardBuffer,
-        { name: "song-banner.png" }
-      );
+      mediaAttachment = new AttachmentBuilder(cachedMedia.cardBuffer, { name: "song-banner.png" });
       mediaUrl = "attachment://song-banner.png";
     }
   }

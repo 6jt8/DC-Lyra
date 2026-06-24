@@ -264,6 +264,7 @@ export function createPlaybackActionRow(
   const playEmoji = getButtonEmoji("play") || "▶️";
   const pauseEmoji = getButtonEmoji("pause") || "⏸️";
   const skipEmoji = getButtonEmoji("next") || "⏭️";
+  const previousEmoji = getButtonEmoji("previous") || "⏮️";
   const volumeEmoji = getButtonEmoji("volume") || "🔊";
   const loopEmoji = getButtonEmoji("settings") || "🔁";
   const stopEmoji = getButtonEmoji("stop") || "⏹️";
@@ -273,6 +274,12 @@ export function createPlaybackActionRow(
   const playbackStyle = paused ? ButtonStyle.Success : ButtonStyle.Secondary;
 
   return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("previousTrack")
+      .setEmoji(previousEmoji)
+      .setLabel("Previous")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId("togglePlayback")
       .setEmoji(playbackEmoji)

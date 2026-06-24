@@ -77,7 +77,7 @@ export const config: BotConfig = {
   generateSongCard: true,
   metadataTag: true,
   lowMemoryMode: false,
-  progressUpdateInterval: Number(process.env.PROGRESS_UPDATE_INTERVAL) || 15000,
+  progressUpdateInterval: Number(process.env.PROGRESS_UPDATE_INTERVAL) || 5000,
   errorLog: "",
   applicationEmojis: {
     enabled: true,
@@ -87,5 +87,7 @@ export const config: BotConfig = {
   },
   nodes: parsedNodes,
   useIntents: process.env.USE_INTENTS === "true",
+  dashboardEnabled: process.env.DASHBOARD_ENABLED !== "false",
+  dashboardSecret: process.env.DASHBOARD_SECRET || "",
 };
 

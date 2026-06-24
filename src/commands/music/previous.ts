@@ -67,10 +67,13 @@ export default {
         ]
       );
 
-      await interaction.editReply({
+      const replyMsg = await interaction.editReply({
         components: [container],
         flags: 1 << 7,
-      }).then((msg: any) => setTimeout(() => msg.delete().catch(() => {}), 3000));
+      }).catch(() => null);
+      if (replyMsg) {
+        setTimeout(() => replyMsg.delete().catch(() => {}), 3000);
+      }
 
     } catch (error) {
       const lang = await getLang(interaction.guildId).catch(() => ({ music: { previous: { errors: {} } } }));

@@ -11,6 +11,7 @@ import {
   LEGACY_PLAYER_FAVORITES_NAME,
   getCommandMentionMap,
   requesters,
+  previousTrackMap,
 } from "./player-store.js";
 import {
   sendEmbed,
@@ -26,6 +27,7 @@ import { refreshNowPlayingPanel, cleanupTrackMessages } from "./player-cleanup.j
 import { applyFilterByKey } from "./player-filters.js";
 import { getPlaylistCollection } from "../database/database.js";
 import { clearProgressUpdates } from "./player-lifecycle.js";
+import { checkButtonCooldown } from "../utils/interaction.js";
 
 export function setupCollector(
   client: any,
@@ -35,6 +37,7 @@ export function setupCollector(
 ): any {
   const filter = (i: any) =>
     [
+      "previousTrack",
       "loopToggle",
       "skipTrack",
       "stopTrack",
@@ -55,6 +58,24 @@ export function setupCollector(
   });
 
   collector.on("collect", async (i: any) => {
+    const cooldown = checkButtonCooldown(channel.guildId, i.user.id);
+    if (!cooldown.allowed) {
+      const sec = (cooldown.remaining / 1000).toFixed(1);
+      const msg = await channel
+        .send({
+          components: [
+            cardFromMessage(
+              `## ⏱️ Slow Down!\n\nPlease wait **${sec}s** before using another button.`,
+              "Cooldown"
+            ),
+          ],
+          flags: MessageFlags.IsComponentsV2,
+        })
+        .catch(() => {});
+      if (msg) setTimeout(() => msg.delete().catch(() => {}), 2000);
+      return;
+    }
+
     const member = i.member;
     const voiceChannel = member.voice.channel;
     const playerChannel = player.voiceChannel;
@@ -190,6 +211,18 @@ async function handleInteraction(
   const guildId = player.guildId;
 
   switch (i.customId) {
+    case "previousTrack": {
+      const previousTrack = previousTrackMap.get(guildId);
+      if (!previousTrack || !previousTrack.info) {
+        await sendEphemeralReply(i, t.controls?.noPreviousTrack || "⏮️ **No previous track available.**");
+        break;
+      }
+      clearProgressUpdates(guildId);
+      player.queue.unshift(previousTrack);
+      player.stop();
+      await sendEphemeralReply(i, t.controls?.previousTrack || "⏮️ **Going back to previous track...**");
+      break;
+    }
     case "loopToggle": {
       const msg = toggleLoop(player, channel, t);
       await refreshNowPlayingPanel(client, guildId);
@@ -226,7 +259,7 @@ async function handleInteraction(
     }
     case "stopTrack": {
       await cleanupTrackMessages(client, player);
-      client.statusManager?.onPlayerDisconnect(guildId);
+      await client.statusManager?.onPlayerDisconnect(guildId).catch(() => {});
       player.stop();
       player.destroy();
       await sendEphemeralReply(
@@ -476,7 +509,7 @@ async function handlePlayerModalSubmit(
         !player.current &&
         player.queue.length > 0
       ) {
-        player.play();
+        await player.play();
       }
 
       await refreshNowPlayingPanel(client, player.guildId);

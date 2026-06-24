@@ -29,6 +29,8 @@ export interface BotConfig {
   applicationEmojis: ApplicationEmojiConfig;
   nodes: LavalinkNodeConfig[];
   useIntents?: boolean;
+  dashboardEnabled?: boolean;
+  dashboardSecret?: string;
 }
 
 export interface BotLinks {

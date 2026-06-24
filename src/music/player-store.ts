@@ -6,6 +6,7 @@ export const progressUpdateIntervals = new Map<string, any>();
 export const interactionCollectors = new Map<string, any>();
 export const guildActiveFilter = new Map<string, string | null>();
 export const guildTrackMediaCache = new Map<string, any>();
+export const guildThumbnailCache = new Map<string, { trackUri: string; buffer: Buffer }>();
 export const requesters = new Map<string, string>();
 export const previousTrackMap = new Map<string, any>();
 

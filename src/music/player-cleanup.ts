@@ -79,7 +79,7 @@ export async function deleteAndSendNowPlaying(
   }
 
   const { mediaUrl, mediaAttachment } = await resolveMediaForGuild(
-    client, guildId, channel, track
+    client, guildId, channel, track, player
   );
 
   const payload = await buildNowPlayingPayload(
@@ -140,7 +140,7 @@ export async function refreshNowPlayingPanel(
   if (msg) {
     const track = player.current;
     const { mediaUrl } = await resolveMediaForGuild(
-      client, guildId, channel, track
+      client, guildId, channel, track, player
     );
     const payload = await buildNowPlayingPayload(
       client, guildId, player, track, mediaUrl, null
