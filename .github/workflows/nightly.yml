@@ -23,7 +23,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release delete nightly -y 2>/dev/null || true
+          IDS=$(gh release list --limit 100 --json id,tagName --jq '.[] | select(.tagName=="nightly") | .id')
+          for id in $IDS; do
+            gh api -X DELETE "repos/{owner}/{repo}/releases/$id" 2>/dev/null || true
+          done
           git tag -d nightly 2>/dev/null || true
           git push origin :refs/tags/nightly 2>/dev/null || true
 
@@ -37,7 +40,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Install system dependencies
         run: |
