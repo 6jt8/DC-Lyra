@@ -153,7 +153,7 @@ export async function playWithRetries(
       continue;
     }
     try {
-      player.play();
+      await player.play();
       return;
     } catch (playErr: any) {
       const msg = playErr?.message || "";
