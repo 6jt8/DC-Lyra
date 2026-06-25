@@ -21,17 +21,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Delete old nightly release and tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          IDS=$(gh release list --limit 100 --json databaseId,tagName --jq '.[] | select(.tagName=="nightly") | .databaseId')
-          for id in $IDS; do
-            gh api -X DELETE "repos/{owner}/{repo}/releases/$id" 2>/dev/null || true
-          done
-          git tag -d nightly 2>/dev/null || true
-          git push origin :refs/tags/nightly 2>/dev/null || true
-
       - name: Generate nightly version
         id: version
         shell: bash
