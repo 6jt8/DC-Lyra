@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          IDS=$(gh release list --limit 100 --json id,tagName --jq '.[] | select(.tagName=="nightly") | .id')
+          IDS=$(gh release list --limit 100 --json databaseId,tagName --jq '.[] | select(.tagName=="nightly") | .databaseId')
           for id in $IDS; do
             gh api -X DELETE "repos/{owner}/{repo}/releases/$id" 2>/dev/null || true
           done
