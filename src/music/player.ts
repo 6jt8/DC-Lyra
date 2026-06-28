@@ -48,6 +48,7 @@ import {
   isTrackEventNotificationAllowed,
   resetAutoplayFailureCount,
 } from "./player-autoplay.js";
+import { hasConnectedNode, safeAutoplay } from "./riffy-utils.js";
 const musicCard = new EnhancedMusicCard();
 const useGeneratedSongCard = config.generateSongCard !== false;
 const enableVoiceChannelIdPatch =
@@ -115,6 +116,44 @@ async function patchVoiceChannelOnStart(player: any): Promise<void> {
     console.log(
       `[ VOICE DEBUG ] playerCreate guild=${player.guildId} voiceChannel=${player.voiceChannel || "null"} patch=${enableVoiceChannelIdPatch ? "on" : "off"}`
     );
+  }
+}
+
+async function handleAutoplayEmpty(
+  client: any,
+  player: any,
+  channel: any,
+  guildId: string,
+  is24_7: boolean
+): Promise<void> {
+  await cleanupTrackMessages(client, player);
+  const lang = await getLang(guildId).catch(() => ({
+    console: { player: {} },
+  }));
+  const t = lang.console?.player || {};
+  if (is24_7) {
+    client.statusManager?.setDefaultStatus();
+    client.statusManager?.clearVoiceChannelStatus(guildId);
+    await sendTransientCard(
+      channel,
+      t.queueEnd?.twentyfoursevenEmpty ||
+        "🔄 **24/7 Mode: Bot will stay in voice channel. Queue is empty.**",
+      5000,
+      "Queue Empty"
+    );
+  } else {
+    await sendTransientCard(
+      channel,
+      t.queueEnd?.noMoreAutoplay ||
+        "⚠️ **No more tracks to autoplay. Leaving in 60s...**",
+      5000,
+      "Autoplay Ended"
+    );
+    await new Promise((res) => setTimeout(res, 60000));
+    if (player.queue.length === 0 && !player.playing) {
+      client.statusManager?.onPlayerDisconnect(guildId);
+      player.destroy();
+    }
   }
 }
 
@@ -735,47 +774,88 @@ export async function initializePlayer(client: any): Promise<void> {
       const is24_7 = settings?.twentyfourseven;
 
       if (settings?.autoplay) {
+        if (isMaintenanceMode(guildId)) {
+          console.log(
+            `${colors.cyan}[ AUTOPLAY ]${colors.reset} Guild ${guildId} in maintenance mode, skipping autoplay`
+          );
+          await cleanupTrackMessages(client, player);
+          if (is24_7) {
+            client.statusManager?.setDefaultStatus();
+            client.statusManager?.clearVoiceChannelStatus(guildId);
+            await sendTransientCard(
+              channel,
+              "🔧 **Autoplay temporarily disabled (maintenance). Bot stays in voice.**",
+              5000,
+              "Maintenance Mode"
+            );
+          } else {
+            await sendTransientCard(
+              channel,
+              "🔧 **Autoplay temporarily disabled (maintenance). Leaving in 60s...**",
+              5000,
+              "Maintenance Mode"
+            );
+            await new Promise(res => setTimeout(res, 60000));
+            if (player.queue.length === 0 && !player.playing) {
+              client.statusManager?.onPlayerDisconnect(guildId);
+              player.destroy();
+            }
+          }
+          return;
+        }
+
+        if (!hasConnectedNode(client)) {
+          console.warn(
+            `${colors.yellow}[ AUTOPLAY ]${colors.reset} No connected nodes for guild ${guildId}, skipping autoplay`
+          );
+          const failures = incrementAutoplayFailureCount(guildId);
+          if (failures >= 3) {
+            activateMaintenanceMode(guildId, "no_connected_nodes");
+          }
+          await cleanupTrackMessages(client, player);
+          if (is24_7) {
+            client.statusManager?.setDefaultStatus();
+            client.statusManager?.clearVoiceChannelStatus(guildId);
+            await sendTransientCard(
+              channel,
+              "🔧 **Lavalink node unavailable. Autoplay paused.**",
+              5000,
+              "Node Unavailable"
+            );
+          } else {
+            await sendTransientCard(
+              channel,
+              "🔧 **Lavalink node unavailable. Leaving in 60s...**",
+              5000,
+              "Node Unavailable"
+            );
+            await new Promise(res => setTimeout(res, 60000));
+            if (player.queue.length === 0 && !player.playing) {
+              client.statusManager?.onPlayerDisconnect(guildId);
+              player.destroy();
+            }
+          }
+          return;
+        }
+
         await cleanupPreviousTrackMessages(channel, guildId);
 
         try {
-          const nextTrack = await player.autoplay(player);
+          const nextTrack = await safeAutoplay(player, 2);
 
           if (!nextTrack) {
-              await cleanupTrackMessages(client, player);
-              const lang = await getLang(guildId).catch(() => ({
-                console: { player: {} },
-              }));
-              const t = lang.console?.player || {};
-              if (is24_7) {
-                client.statusManager?.setDefaultStatus();
-                client.statusManager?.clearVoiceChannelStatus(guildId);
-                await sendTransientCard(
-                  channel,
-                  t.queueEnd?.twentyfoursevenEmpty ||
-                    "🔄 **24/7 Mode: Bot will stay in voice channel. Queue is empty.**",
-                  5000,
-                  "Queue Empty"
-                );
-              } else {
-                await sendTransientCard(
-                  channel,
-                  t.queueEnd?.noMoreAutoplay ||
-                    "⚠️ **No more tracks to autoplay. Leaving in 60s...**",
-                  5000,
-                  "Autoplay Ended"
-                );
-                await new Promise(res => setTimeout(res, 60000));
-                if (player.queue.length === 0 && !player.playing) {
-                  client.statusManager?.onPlayerDisconnect(guildId);
-                  player.destroy();
-                }
-              }
+            await handleAutoplayEmpty(client, player, channel, guildId, is24_7);
           }
         } catch (autoplayError: any) {
-          const langSync = getLangSync();
+          const failures = incrementAutoplayFailureCount(guildId);
           console.warn(
-            `${colors.yellow}[ AUTOPLAY ]${colors.reset} Autoplay failed for guild ${guildId}: ${autoplayError.message}`
+            `${colors.yellow}[ AUTOPLAY ]${colors.reset} Failed for guild ${guildId} (attempt ${failures}): ${autoplayError.message}`
           );
+
+          if (failures >= 3) {
+            activateMaintenanceMode(guildId, "autoplay_failures");
+          }
+
           await cleanupTrackMessages(client, player);
           const lang = await getLang(guildId).catch(() => ({
             console: { player: {} },
