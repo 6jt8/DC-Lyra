@@ -27,7 +27,7 @@
     "express": "^4.19.2",
     "pg": "^8.21.0",
     "riffy": "^1.0.12",
-    "spotify-url-info": "^3.2.18",
+    "spotify-url-info": "^3.3.1",
     "spotify-web-api-node": "^5.0.2",
     "yt-search": "^2.13.1"
   },
