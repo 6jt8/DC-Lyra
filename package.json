@@ -23,7 +23,7 @@
     "axios": "^1.8.1",
     "discord-api-types": "^0.38.50",
     "discord.js": "^14.25.1",
-    "dotenv": "^16.4.7",
+    "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "pg": "^8.22.0",
     "riffy": "^1.0.12",
