@@ -86,6 +86,12 @@ export async function createPlayerForGuild(
     }
 
     if (nodesAvailable) {
+      // Prüfe dass Riffy's WebSocket-State wirklich ready ist (nicht nur HTTP-Health)
+      const { hasRiffyNodesReady } = await import("./riffy-utils.js");
+      if (!hasRiffyNodesReady(client)) {
+        await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
+        await new Promise((res) => setTimeout(res, 500));
+      }
       try {
         player = client.riffy.createConnection({
           guildId,
@@ -108,15 +114,21 @@ export async function createPlayerForGuild(
         }
         if (attempts >= maxAttempts) {
           await nodeManager.refreshRiffy?.();
-          await nodeManager.ensureNodeAvailable().catch(() => {});
-          player = client.riffy.createConnection({
-            guildId,
-            voiceChannel,
-            textChannel,
-            deaf: true,
-            defaultVolume: 20,
-          });
-          break;
+          try {
+            await nodeManager.ensureNodeAvailable();
+            player = client.riffy.createConnection({
+              guildId,
+              voiceChannel,
+              textChannel,
+              deaf: true,
+              defaultVolume: 20,
+            });
+            break;
+          } catch (finalErr: any) {
+            throw new Error(
+              "No Lavalink nodes are currently available. Please check your node configuration."
+            );
+          }
         }
         throw err;
       }
@@ -132,7 +144,9 @@ export async function createPlayerForGuild(
       } catch (_) {}
       await new Promise((res) => setTimeout(res, 1000));
       await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
-      await nodeManager.ensureNodeAvailable().catch(() => {});
+      const postRetryNodeAvailable = await nodeManager.ensureNodeAvailable()
+        .then(() => true).catch(() => false);
+      if (!postRetryNodeAvailable) continue;
       try {
         player = client.riffy.createConnection({
           guildId,

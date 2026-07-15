@@ -154,7 +154,7 @@ export class LavalinkNodeManager {
   }
 
   _findRiffyNodeObjectByConfig(nodeConfig: any): any {
-    if (!this.riffy || !this.riffy.nodes) return null;
+    if (!this.riffy) return null;
 
     const tryMatch = (riffyNode: any, cfg: any) => {
       if (!riffyNode) return false;
@@ -180,6 +180,17 @@ export class LavalinkNodeManager {
       return false;
     };
 
+    // Zuerst nodeMap durchsuchen (echte Node-Objekte mit .connect())
+    try {
+      if (this.riffy.nodeMap instanceof Map) {
+        for (const [, rnode] of this.riffy.nodeMap.entries()) {
+          if (tryMatch(rnode, nodeConfig)) return rnode;
+        }
+      }
+    } catch (_) {}
+
+    // Fallback: riffy.nodes (rohes Config-Array)
+    if (!this.riffy.nodes) return null;
     try {
       if (this.riffy.nodes instanceof Map) {
         for (const [, rnode] of this.riffy.nodes.entries()) {
@@ -481,71 +492,27 @@ export class LavalinkNodeManager {
   }
 
   getConnectedNodeCount(): number {
-    if (!this.riffy || !this.riffy.nodes) return 0;
+    // riffy.nodeMap enthält die echten Node-Instanzen mit .connected State
+    // riffy.nodes dagegen ist nur das rohe Config-Array (ohne .connected)
+    if (!this.riffy?.nodeMap) return 0;
 
     let count = 0;
     try {
-      if (this.riffy.nodes instanceof Map) {
-        for (const [nodeName, node] of this.riffy.nodes) {
-          if (
-            node &&
-            (node.connected || node.state === "CONNECTED")
-          ) {
-            const nodeId = this.findNodeIdByName(nodeName);
-            if (nodeId) {
-              this.nodeStatus.set(nodeId, {
-                online: true,
-                lastCheck: new Date(),
-                lastError: null,
-              });
-            }
-            count++;
+      for (const node of this.riffy.nodeMap.values()) {
+        if (node?.connected) {
+          const nodeId = this.findNodeIdByName(node.name);
+          if (nodeId) {
+            this.nodeStatus.set(nodeId, {
+              online: true,
+              lastCheck: new Date(),
+              lastError: null,
+            });
           }
-        }
-      } else if (Array.isArray(this.riffy.nodes)) {
-        for (const node of this.riffy.nodes) {
-          if (
-            node &&
-            (node.connected || node.state === "CONNECTED")
-          ) {
-            const nodeName = node.name || node.identifier;
-            const nodeId = this.findNodeIdByName(nodeName);
-            if (nodeId) {
-              this.nodeStatus.set(nodeId, {
-                online: true,
-                lastCheck: new Date(),
-                lastError: null,
-              });
-            }
-            count++;
-          }
-        }
-      } else if (typeof this.riffy.nodes === "object") {
-        for (const nodeName in this.riffy.nodes) {
-          const node = this.riffy.nodes[nodeName];
-          if (
-            node &&
-            (node.connected || node.state === "CONNECTED")
-          ) {
-            const nodeId = this.findNodeIdByName(nodeName);
-            if (nodeId) {
-              this.nodeStatus.set(nodeId, {
-                online: true,
-                lastCheck: new Date(),
-                lastError: null,
-              });
-            }
-            count++;
-          }
+          count++;
         }
       }
     } catch (_) {}
 
-    if (count === 0) {
-      for (const status of this.nodeStatus.values()) {
-        if (status.online) count++;
-      }
-    }
     return count;
   }
 
@@ -739,55 +706,21 @@ export class LavalinkNodeManager {
     const node = this.nodes.get(nodeId);
     if (!node) return false;
 
-    if (this.riffy && this.riffy.nodes) {
+    // riffy.nodeMap verwenden (echte Node-Objekte mit .connected State)
+    if (this.riffy?.nodeMap) {
       try {
-        if (this.riffy.nodes instanceof Map) {
-          for (const [nodeName, riffyNode] of this.riffy.nodes) {
-            if (
-              (nodeName === node.id ||
-                nodeName === node.displayName ||
-                nodeName === node.name) &&
-              riffyNode &&
-              (riffyNode.connected ||
-                riffyNode.state === "CONNECTED")
-            ) {
-              return true;
-            }
-          }
-        } else if (Array.isArray(this.riffy.nodes)) {
-          for (const riffyNode of this.riffy.nodes) {
-            const nodeName =
-              riffyNode.name || riffyNode.identifier;
-            if (
-              (nodeName === node.id ||
-                nodeName === node.displayName ||
-                nodeName === node.name) &&
-              (riffyNode.connected ||
-                riffyNode.state === "CONNECTED")
-            ) {
-              return true;
-            }
-          }
-        } else if (typeof this.riffy.nodes === "object") {
-          for (const nodeName in this.riffy.nodes) {
-            const riffyNode = this.riffy.nodes[nodeName];
-            if (
-              (nodeName === node.id ||
-                nodeName === node.displayName ||
-                nodeName === node.name) &&
-              riffyNode &&
-              (riffyNode.connected ||
-                riffyNode.state === "CONNECTED")
-            ) {
-              return true;
-            }
+        for (const [, riffyNode] of this.riffy.nodeMap) {
+          if (
+            (riffyNode.name === node.id ||
+              riffyNode.name === node.displayName ||
+              riffyNode.name === node.name) &&
+            riffyNode?.connected
+          ) {
+            return true;
           }
         }
       } catch (_) {}
     }
-
-    const status = this.nodeStatus.get(nodeId);
-    if (status && status.online) return true;
 
     return false;
   }
