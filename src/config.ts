@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { BotConfig } from "./types/config.js";
-import path from "path";
 
 let parsedNodes = [];
 if (process.env.LAVALINK_NODES) {
@@ -16,6 +15,7 @@ export const config: BotConfig = {
   clientId: process.env.CLIENT_ID || "",
   language: "en",
   ownerID: process.env.OWNER_ID ? process.env.OWNER_ID.split(",") : [""],
+  djRole: process.env.DJ_ROLE || "",
   databaseUrl: process.env.DATABASE_URL || "",
   spotifyClientId: process.env.SPOTIFY_CLIENT_ID || "",
   spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET || "",
@@ -30,7 +30,7 @@ export const config: BotConfig = {
   activityType: process.env.ACTIVITY_TYPE || "PLAYING",
   links: {
     supportServer: "",
-    github: "https://github.com/6jt8",
+    github: "https://github.com/6jt8/DC-Lyra",
     website: "",
   },
   embedTimeout: 5,
@@ -40,6 +40,10 @@ export const config: BotConfig = {
   metadataTag: true,
   lowMemoryMode: false,
   progressUpdateInterval: Number(process.env.PROGRESS_UPDATE_INTERVAL) || 15000,
+  maxQueueSize: Number(process.env.MAX_QUEUE_SIZE) || 500,
+  maxPlaylistTracks: Number(process.env.MAX_PLAYLIST_TRACKS) || 200,
+  defaultVolume: Number(process.env.DEFAULT_VOLUME) || 20,
+  disconnectTimeoutMs: Number(process.env.DISCONNECT_TIMEOUT_MS) || 60000,
   errorLog: "",
   applicationEmojis: {
     enabled: true,

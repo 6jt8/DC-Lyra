@@ -1,6 +1,6 @@
 {
   "name": "lyra-music",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Lyra — Advanced Discord Music Bot powered by Lavalink & TypeScript",
   "main": "dist/src/index.js",
   "scripts": {
@@ -21,6 +21,7 @@
     "@discordjs/rest": "^2.6.1",
     "@napi-rs/canvas": "^1.0.2",
     "axios": "^1.8.1",
+    "decomment": "^0.9.5",
     "discord-api-types": "^0.38.50",
     "discord.js": "^14.25.1",
     "dotenv": "^17.4.2",

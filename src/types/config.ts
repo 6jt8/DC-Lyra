@@ -3,6 +3,7 @@ export interface BotConfig {
   clientId: string;
   language: string;
   ownerID: string[];
+  djRole?: string;
   databaseUrl: string;
   spotifyClientId: string;
   spotifyClientSecret: string;
@@ -23,6 +24,10 @@ export interface BotConfig {
   metadataTag: boolean;
   lowMemoryMode: boolean;
   progressUpdateInterval?: number;
+  maxQueueSize?: number;
+  maxPlaylistTracks?: number;
+  defaultVolume?: number;
+  disconnectTimeoutMs?: number;
   errorLog: string;
   voiceDebug?: boolean;
   enableVoiceChannelIdPatch?: boolean;
