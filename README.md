@@ -25,6 +25,10 @@
 
 <br>
 
+> **⚠️ Notice:** This project is currently in **low-maintenance mode**. I'm not actively developing new features, but I **will** review and respond to pull requests, issues, and questions. If you're interested in taking over maintenance or reviving this project, please open an issue so we can discuss it.
+
+<br>
+
 <h2 align="center">📦 Downloads</h2>
 
 <div align="center">
