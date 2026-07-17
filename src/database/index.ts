@@ -2,8 +2,17 @@ import { getAdapter, initDatabase, isConnected } from "./manager.js";
 
 export { initDatabase, getAdapter, isConnected };
 
+const VALID_COLUMN = /^[a-z_][a-z0-9_]*$/;
+
+function sanitizeColumn(name: string): string {
+  if (!VALID_COLUMN.test(name)) {
+    throw new Error(`Invalid column name: ${name}`);
+  }
+  return name;
+}
+
 function toSnake(key: string): string {
-  return key.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());
+  return sanitizeColumn(key.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase()));
 }
 
 function mapFilter(filter: Record<string, any>): { sql: string; vals: any[] } {
@@ -88,7 +97,7 @@ export class Collection {
     update: Record<string, any>,
     options?: { upsert?: boolean }
   ): Promise<any> {
-    // Handle upsert
+    
     if (options?.upsert) {
       const existing = await this.findOne(filter);
       if (!existing) {
@@ -133,7 +142,7 @@ export class Collection {
   ): Promise<any | null> {
     const before = await this.findOne(filter);
 
-    // Handle upsert
+    
     if (options?.upsert) {
       const existing = await this.findOne(filter);
       if (!existing) {

@@ -1,4 +1,4 @@
-import { isConnected, getAdapter } from "./manager.js";
+import { isConnected} from "./manager.js";
 import { Collection } from "./index.js";
 
 export function isDbConnected(): boolean {
