@@ -33,14 +33,14 @@ export default {
                     interaction,
                     new Error('Player not available'),
                     'resume',
-                    (t.errors?.title || '## ? Error') + '\n\n' + (t.errors?.message || 'Player is not available. Please start playing a song first.')
+                    (t.errors?.title || '## ❌ Error') + '\n\n' + (t.errors?.message || 'Player is not available. Please start playing a song first.')
                 );
             }
 
             if (!player.paused) {
                 return await sendSuccessResponse(
                     interaction,
-                    '## ?? Already Playing\n\n' +
+                    '## ▶️ Already Playing\n\n' +
                     'The music is already playing.\n' +
                     'Use `/pause` to pause playback.'
                 );
@@ -67,7 +67,7 @@ export default {
                 interaction,
                 error,
                 'resume',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while resuming the music.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while resuming the music.\nPlease try again later.')
             );
         }
     }

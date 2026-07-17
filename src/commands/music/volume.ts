@@ -68,7 +68,7 @@ export default {
                 interaction,
                 error,
                 'volume',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while setting the volume.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while setting the volume.\nPlease try again later.')
             );
         }
     }

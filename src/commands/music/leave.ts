@@ -33,7 +33,7 @@ export default {
                     interaction,
                     new Error('Player not available'),
                     'leave',
-                    (t.errors?.title || '## ? Error') + '\n\n' + (t.errors?.message || 'Player is not available.')
+                    (t.errors?.title || '## ❌ Error') + '\n\n' + (t.errors?.message || 'Player is not available.')
                 );
             }
 
@@ -54,7 +54,7 @@ export default {
                 interaction,
                 error,
                 'leave',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while leaving the voice channel.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while leaving the voice channel.\nPlease try again later.')
             );
         }
     }

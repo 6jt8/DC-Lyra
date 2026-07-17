@@ -101,7 +101,7 @@ export default {
                 interaction,
                 error,
                 'voteskip',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while processing the vote.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while processing the vote.\nPlease try again later.')
             );
         }
     }

@@ -6,6 +6,7 @@ import { getLavalinkManager } from '../../music/lavalink.js';
 import { getLang } from '../../utils/language.js';
 import { getEmoji, getButtonEmoji } from '../../emoji/emoji.js';
 import { createPlayerForGuild, destroyPlayerIfDifferentChannel, playWithRetries } from '../../music/player-connection.js';
+import { formatDuration } from '../../music/player-ui.js';
 
 const data = new SlashCommandBuilder()
   .setName("search")
@@ -15,20 +16,6 @@ const data = new SlashCommandBuilder()
       .setDescription("Search query for the song")
       .setRequired(true)
   );
-
-function formatDuration(ms: number): string {
-    const seconds = Math.floor((ms / 1000) % 60);
-    const minutes = Math.floor((ms / (1000 * 60)) % 60);
-    const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
-
-    return [
-        hours > 0 ? `${hours}h` : null,
-        minutes > 0 ? `${minutes}m` : null,
-        `${seconds}s`,
-    ]
-        .filter(Boolean)
-        .join(' ');
-}
 
 export default {
     data: data,
@@ -238,7 +225,7 @@ export default {
                 interaction,
                 error,
                 'search',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while searching.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while searching.\nPlease try again later.')
             );
         }
     }

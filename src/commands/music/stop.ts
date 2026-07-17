@@ -60,7 +60,7 @@ export default {
                 interaction,
                 error,
                 'stop',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while stopping the music.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while stopping the music.\nPlease try again later.')
             );
         }
     }

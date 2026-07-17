@@ -4,24 +4,11 @@ import { checkCurrentTrack } from '../../utils/playerValidation.js';
 import { handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle } from '../../ui/responseHandler.js';
 import { getLang } from '../../utils/language.js';
 import { getEmoji } from '../../emoji/emoji.js';
+import { formatDuration } from '../../music/player-ui.js';
 
 const data = new SlashCommandBuilder()
   .setName("trackinfo")
   .setDescription("Show detailed information about the current track");
-
-function formatDuration(ms: number): string {
-    const seconds = Math.floor((ms / 1000) % 60);
-    const minutes = Math.floor((ms / (1000 * 60)) % 60);
-    const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
-
-    return [
-        hours > 0 ? `${hours}h` : null,
-        minutes > 0 ? `${minutes}m` : null,
-        `${seconds}s`,
-    ]
-        .filter(Boolean)
-        .join(' ');
-}
 
 export default {
     data: data,
@@ -103,7 +90,7 @@ export default {
                 interaction,
                 error,
                 'trackinfo',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while retrieving track information.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while retrieving track information.\nPlease try again later.')
             );
         }
     }

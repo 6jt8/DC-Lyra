@@ -38,7 +38,7 @@ export default {
                 interaction,
                 error,
                 'skip',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while skipping the song.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while skipping the song.\nPlease try again later.')
             );
         }
     }

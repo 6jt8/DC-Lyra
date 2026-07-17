@@ -98,7 +98,7 @@ export default {
                 interaction,
                 error,
                 'seek',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while seeking.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while seeking.\nPlease try again later.')
             );
         }
     }

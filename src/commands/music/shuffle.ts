@@ -71,7 +71,7 @@ export default {
                 interaction,
                 error,
                 'shuffle',
-                (t.title || '## ? Error') + '\n\n' + (t.message || 'An error occurred while shuffling the queue.\nPlease try again later.')
+                (t.title || '## ❌ Error') + '\n\n' + (t.message || 'An error occurred while shuffling the queue.\nPlease try again later.')
             );
         }
     }
