@@ -50,6 +50,24 @@ export function shouldSuppressError(error: any): boolean {
   return false;
 }
 
+export function safeCatch(context: string): (err: any) => void {
+  return (err: any) => {
+    const msg = err?.message || "";
+    if (
+      msg.includes("10008") ||
+      msg.includes("Unknown Message") ||
+      msg.includes("Missing Access") ||
+      msg.includes("10062") ||
+      msg.includes("Unknown Interaction")
+    ) {
+      return;
+    }
+    if (msg) {
+      console.debug(`[SAFE] ${context}: ${msg}`);
+    }
+  };
+}
+
 export function getErrorLogMessage(error: any): string {
   const msg = error.message || "";
 
@@ -57,7 +75,7 @@ export function getErrorLogMessage(error: any): string {
     msg.includes("player.restart") ||
     msg.includes("restart is not a function")
   ) {
-    return `[ LAVALINK ] Ignoring Riffy reconnect bug: ${msg}`;
+    return "";
   }
   if (msg.includes("DAVE") || msg.includes("external sender")) {
     return `[ VOICE ] DAVE protocol error — connection may need recovery: ${msg}`;

@@ -1,11 +1,7 @@
 import { colors } from "../ui/colors.js";
+import { getLavalinkManager } from "./lavalink.js";
 
-/**
- * Checkt Riffy's interne nodeMap (echte Node-Objekte mit WebSocket-State)
- * ob mindestens ein Node wirklich per WebSocket connected ist.
- * Das ist die authoritative Quelle – Riffy's `leastUsedNodes` basiert auf
- * exakt diesem State (riffy.js:64-68).
- */
+
 export function hasRiffyNodesReady(client: any): boolean {
   if (!client?.riffy?.nodeMap) return false;
   if (client.riffy.nodeMap instanceof Map) {
@@ -19,8 +15,45 @@ export function hasRiffyNodesReady(client: any): boolean {
 export function hasConnectedNode(client: any): boolean {
   if (!client?.riffy?.nodes) return false;
   const nodes = client.riffy.nodes;
-  if (nodes.size === 0) return false;
-  return [...nodes.values()].some((n: any) => n.connected);
+  if (typeof nodes.size === "number" && nodes.size === 0) return false;
+  if (nodes instanceof Map) {
+    return [...nodes.values()].some((n: any) => n?.connected);
+  }
+  if (Array.isArray(nodes)) {
+    return nodes.some((n: any) => n?.connected);
+  }
+  return false;
+}
+
+export function getBestConnectedNode(client: any): any | null {
+  if (!client?.riffy?.nodeMap) return null;
+  if (client.riffy.nodeMap instanceof Map) {
+    for (const node of client.riffy.nodeMap.values()) {
+      if (node?.connected) return node;
+    }
+  }
+  return null;
+}
+
+export function getNodeConnectionStatus(client: any): {
+  total: number;
+  connected: number;
+  nodes: { name: string; connected: boolean }[];
+} {
+  const manager = getLavalinkManager();
+  const total = manager?.getTotalNodeCount() || 0;
+  const connected = manager?.getConnectedNodeCount() || 0;
+  const nodes: { name: string; connected: boolean }[] = [];
+
+  if (client?.riffy?.nodeMap instanceof Map) {
+    for (const node of client.riffy.nodeMap.values()) {
+      if (node) {
+        nodes.push({ name: node.name || "unknown", connected: !!node.connected });
+      }
+    }
+  }
+
+  return { total, connected, nodes };
 }
 
 export async function safeAutoplay(player: any, maxRetries = 2): Promise<any> {

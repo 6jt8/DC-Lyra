@@ -48,24 +48,37 @@ export async function createPlayerForGuild(
   const nodeManager = getLavalinkManager();
   if (!nodeManager) throw new Error("Lavalink manager not available");
 
-  await nodeManager.checkAllNodesHealth().catch(() => {});
-  await nodeManager.forceConnectAllNodes().catch(() => {});
-  await new Promise((res) => setTimeout(res, 400));
+  
+  const healthyNodes = await nodeManager.checkAllNodesHealth().catch(() => []);
+  if (healthyNodes.length === 0) {
+    await nodeManager.forceConnectAllNodes().catch(() => {});
+    await new Promise((res) => setTimeout(res, 400));
+  }
 
   let player: any;
   let attempts = 0;
   const maxAttempts = 3;
 
   while (attempts < maxAttempts) {
-    let nodesAvailable = false;
-    try {
-      await nodeManager.ensureNodeAvailable();
-      nodesAvailable = true;
-    } catch (_) {
-      nodesAvailable = false;
+    
+    let bestNode = nodeManager.findBestAvailableNode();
+    if (!bestNode) {
+      
+      const allNodeIds = [...nodeManager.nodes.keys()];
+      for (const nodeId of allNodeIds) {
+        const healthy = await nodeManager.checkNodeHealth(nodeId).catch(() => false);
+        if (healthy) {
+          await nodeManager.attemptConnectNode(nodeId).catch(() => {});
+          await new Promise((res) => setTimeout(res, 200));
+          if (nodeManager.isNodeConnected(nodeId)) {
+            bestNode = nodeId;
+            break;
+          }
+        }
+      }
     }
 
-    if (!nodesAvailable) {
+    if (!bestNode) {
       attempts++;
       if (attempts < maxAttempts) {
         await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
@@ -74,19 +87,17 @@ export async function createPlayerForGuild(
       }
       if (attempts >= maxAttempts) {
         await nodeManager.refreshRiffy?.();
-        try {
-          await nodeManager.ensureNodeAvailable();
-          nodesAvailable = true;
-        } catch (_) {
+        const finalCheck = nodeManager.findBestAvailableNode();
+        if (!finalCheck) {
           throw new Error(
             "No Lavalink nodes are currently available. Please check your node configuration."
           );
         }
+        bestNode = finalCheck;
       }
     }
 
-    if (nodesAvailable) {
-      // Prüfe dass Riffy's WebSocket-State wirklich ready ist (nicht nur HTTP-Health)
+    if (bestNode) {
       const { hasRiffyNodesReady } = await import("./riffy-utils.js");
       if (!hasRiffyNodesReady(client)) {
         await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
@@ -114,8 +125,13 @@ export async function createPlayerForGuild(
         }
         if (attempts >= maxAttempts) {
           await nodeManager.refreshRiffy?.();
+          const finalBest = nodeManager.findBestAvailableNode();
+          if (!finalBest) {
+            throw new Error(
+              "No Lavalink nodes are currently available. Please check your node configuration."
+            );
+          }
           try {
-            await nodeManager.ensureNodeAvailable();
             player = client.riffy.createConnection({
               guildId,
               voiceChannel,
@@ -144,9 +160,8 @@ export async function createPlayerForGuild(
       } catch (_) {}
       await new Promise((res) => setTimeout(res, 1000));
       await nodeManager.reconnectNodesNow?.(5000).catch(() => {});
-      const postRetryNodeAvailable = await nodeManager.ensureNodeAvailable()
-        .then(() => true).catch(() => false);
-      if (!postRetryNodeAvailable) continue;
+      const postRetryBestNode = nodeManager.findBestAvailableNode();
+      if (!postRetryBestNode) continue;
       try {
         player = client.riffy.createConnection({
           guildId,
@@ -177,11 +192,22 @@ export async function playWithRetries(
   textChannel: string,
   maxAttempts = 3
 ): Promise<void> {
+  const nodeManager = getLavalinkManager();
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (!player || player.destroyed) {
       await new Promise((r) => setTimeout(r, 1500));
       continue;
     }
+
+    
+    if (nodeManager) {
+      const availableNodes = nodeManager.getAvailableNodeIds();
+      if (availableNodes.length === 0) {
+        await nodeManager.reconnectNodesNow?.(4000).catch(() => {});
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+
     const connected = await ensurePlayerConnected(
       player,
       client,
