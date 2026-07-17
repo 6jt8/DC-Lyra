@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import { checkVoiceChannel } from "../../utils/voiceChannel.js";
 import { sendErrorResponse, handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle } from "../../ui/responseHandler.js";
 import { getLang } from "../../utils/language.js";
@@ -69,7 +69,7 @@ export default {
 
       await interaction.editReply({
         components: [container],
-        flags: 1 << 7,
+        flags: MessageFlags.IsComponentsV2,
       }).then((msg: any) => setTimeout(() => msg.delete().catch(() => {}), 3000));
 
     } catch (error) {

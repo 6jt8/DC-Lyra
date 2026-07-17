@@ -374,7 +374,7 @@ export class ApplicationEmojiManager {
     const uploader = new EmojiUploader(this.client);
     const result = await uploader.uploadAllEmojis();
     
-    // Refresh cache after upload
+    
     for (const [name, emoji] of result.entries()) {
       if (emoji?.id) {
         const filePath = path.join(this.emojiDir, emoji.name + ".png");

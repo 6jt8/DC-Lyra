@@ -59,7 +59,7 @@ export default {
                 song = { name: songInput };
             }
 
-            // Get current songs array and append new song
+            
             const currentSongs = playlist.songs || [];
             const updatedSongs = [...currentSongs, song];
             

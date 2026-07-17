@@ -1,5 +1,4 @@
 import { Message } from "discord.js";
-import { InteractionType, MessageFlags } from "discord.js";
 import { colors } from "../ui/colors.js";
 import { getLang, getLangSync } from "./language.js";
 import { checkRateLimit } from "./rateLimit.js";

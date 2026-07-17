@@ -39,7 +39,7 @@ export default {
                 );
             }
 
-            // Get current songs array and remove the song by name
+            
             const currentSongs = playlist.songs || [];
             const updatedSongs = currentSongs.filter((s: any) => s.name !== songName);
             
