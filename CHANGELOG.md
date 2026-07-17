@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-07-17
+
+### Added
+- `/join` command — make the bot join your voice channel without starting playback
+- `/grab` command — save the currently playing song to your DMs
+- `/forceskip` command — force skip the current track (admin only, requires Manage Messages)
+- `/rewind` command — rewind the current track by a specified amount (default 10s)
+- `/forward` command — fast forward the current track by a specified amount (default 10s)
+- `/skipto` command — skip to a specific track in the queue without removing others
+- `/bassboost` command — dedicated bass boost levels (Off/Low/Medium/High/Extreme)
+- `/summon` command — summon the bot to your voice channel
+- `/lock` command — lock the queue so others cannot add songs (admin only)
+- `/unlock` command — unlock the queue so others can add songs (admin only)
+- `/disconnect` command — alias for `/leave` to disconnect the bot
+- `/restart` command — restart the current track from the beginning
+- `/equalizer` command — 11 audio equalizer presets (Flat, Bass, Treble, Rock, Pop, Jazz, Classical, Electronic, Full Bass, Full Treble, Headphones)
+- `/speed` command — change playback speed (0.5x–3.0x) using Timescale filter
+- `getAvailableNodeIds()` and `findBestAvailableNode()` methods in `LavalinkNodeManager`
+- Queue lock system: `/lock` prevents non-admins from adding songs to the queue
+- `MAX_QUEUE_SIZE`, `MAX_PLAYLIST_TRACKS`, `DEFAULT_VOLUME`, `DISCONNECT_TIMEOUT_MS` environment variables for configurable limits
+- `safeCatch()` utility in `errorHandler.ts` — safe error wrapper that suppresses known harmless errors (Unknown Message, Missing Access, Unknown Interaction)
+- `decomment` dependency for stripping comments from JSON config files
+- Node error rate throttling: `nodeErrorCount` and `nodeDebugMode` Maps in `LavalinkNodeManager` — errors are throttled to debug-level after 3 in 60s to reduce log spam
+- `getNodeConnectionStatus()` and `getBestConnectedNode()` helpers in `riffy-utils.ts`
+
+### Removed
+- `src/types/music.ts` — unused type definitions removed
+- `src/ui/icons.ts` — unused icon utilities removed
+- `src/music/player-lyrics.ts` — internal lyrics module removed
+
+### Changed
+- Bumped version to 1.2.0
+- Help menu now includes all new commands in categorized sections (Playback, Queue, Other, Effects)
+- Magic numbers (`MAX_QUEUE_SIZE`, `MAX_PLAYLIST_TRACKS`, `DEFAULT_VOLUME`, `DISCONNECT_TIMEOUT_MS`) are now configurable via environment variables
+- Express downgraded from v5.x to v4.x (dependency resolution change)
+- SlashStrategy: replaced bound event listener with direct handler; teardown now uses `removeAllListeners()` for clean removal
+- `getCommandMentionMap` now accepts optional `interaction` parameter to fetch guild-specific command mentions alongside global ones
+- Cleaned up unused imports (`EnhancedMusicCard`, `InteractionType`, `MessageFlags`) across multiple files
+
+### Fixed
+- **Node fallback**: When a node disconnects mid-playback, the bot now tries remaining healthy nodes before showing "No nodes available" (#1)
+- `ensureNodeAvailable()` now iterates through nodes individually instead of failing after one cycle
+- `createPlayerForGuild()` tries each node one-by-one instead of all-or-nothing
+- `playWithRetries()` checks `getAvailableNodeIds()` before each retry attempt
+- `hasConnectedNode()` now handles both Map and Array node formats
+- `isNodeConnected()` safeguarded against non-Map iteration
+- `queueEnd` handler attempts node reconnection before triggering maintenance mode
+- `trackError` and `trackStuck` handlers reconnect nodes before playing next track
+- `resolveWithRetry()` ensures a healthy node exists before each resolve attempt
+- **`## ? Error` fallback strings**: Replaced `?` placeholders with `❌` emoji in 10 command files (resume, skip, leave, volume, search, shuffle, voteskip, seek, stop, trackinfo)
+- **SQL injection**: Column name validation in database `toSnake()` function prevents unescaped identifier injection
+- **Missing `/help` entries**: Added `join`, `leave`, `clear`, `loop`, `previous` to help category sections
+
+### Refactored
+- **Code deduplication**: `createProgressBar` (np.ts → player-ui.ts), `formatDuration` (search.ts, trackinfo.ts, grab.ts → player-ui.ts), `getCommandMentionMap` (help.ts → player-store.ts)
+- **DJ role system**: Added `DJ_ROLE` environment variable; `/language` and `/247` now check for DJ role + Administrator instead of only server owner
+- **SQL safety**: Column name validation in database layer prevents SQL injection
+- **Dynamic imports resolved**: `restartCollector` moved from `player-store.ts` to `player-interaction.ts`, eliminating circular dependency
+- **Riffy queue safety**: `/skipto` now uses `queue.remove()` + `queue.add()` instead of `Array.splice()`
+
+---
+
 ## [1.1.0] - 2026-06-28
 
 ### Security
