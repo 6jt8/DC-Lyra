@@ -1179,7 +1179,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "キュー終了の処理エラー:",
             errorCleanupPrevious: "前のトラックメッセージのクリーンアップエラー:",
             errorCleanupTrack: "トラックメッセージのクリーンアップエラー:",
-            lyricsFetchError: "❌ 歌詞の取得エラー: {message}",
             unableToSendMessage: {
                 title: "## ⚠️ メッセージを送信できません",
                 message: "メッセージを送信できません。ボットの権限を確認してください。"
@@ -1217,16 +1216,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **トラックループが有効になりました！**",
                 queueLoopActivated: "🔁 **キューループが有効になりました！**",
                 loopDisabled: "❌ **ループが無効になりました！**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **現在再生中の曲はありません。**",
-                notFound: "❌ **歌詞が見つかりませんでした！**",
-                liveTitle: "## ライブ歌詞: {title}",
-                syncing: "🔄 歌詞を同期しています...",
-                fullTitle: "## 完全な歌詞: {title}",
-                stopButton: "歌詞を停止",
-                fullButton: "完全な歌詞",
-                deleteButton: "削除"
             },
             trackInfo: {
                 title: "**タイトル:**",

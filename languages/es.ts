@@ -1179,7 +1179,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "Error al manejar el fin de la cola:",
             errorCleanupPrevious: "Error al limpiar el mensaje de pista anterior:",
             errorCleanupTrack: "Error al limpiar el mensaje de pista:",
-            lyricsFetchError: "❌ Error al obtener letras: {message}",
             unableToSendMessage: {
                 title: "## ⚠️ No se puede enviar el mensaje",
                 message: "No se puede enviar el mensaje. Verifica los permisos del bot."
@@ -1217,16 +1216,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **¡El bucle de pista está activado!**",
                 queueLoopActivated: "🔁 **¡El bucle de cola está activado!**",
                 loopDisabled: "❌ **¡El bucle está desactivado!**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **No hay ninguna canción reproduciéndose actualmente.**",
-                notFound: "❌ **¡Letras no encontradas!**",
-                liveTitle: "## Letras en Vivo: {title}",
-                syncing: "🔄 Sincronizando letras...",
-                fullTitle: "## Letras Completas: {title}",
-                stopButton: "Detener Letras",
-                fullButton: "Letras Completas",
-                deleteButton: "Eliminar"
             },
             trackInfo: {
                 title: "**Título:**",

@@ -1179,7 +1179,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "Ошибка обработки конца очереди:",
             errorCleanupPrevious: "Ошибка очистки предыдущего сообщения трека:",
             errorCleanupTrack: "Ошибка очистки сообщения трека:",
-            lyricsFetchError: "❌ Ошибка получения текста: {message}",
             unableToSendMessage: {
                 title: "## ⚠️ Невозможно отправить сообщение",
                 message: "Невозможно отправить сообщение. Проверьте права бота."
@@ -1217,16 +1216,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **Повтор трека активирован!**",
                 queueLoopActivated: "🔁 **Повтор очереди активирован!**",
                 loopDisabled: "❌ **Повтор отключён!**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **Сейчас ничего не воспроизводится.**",
-                notFound: "❌ **Текст не найден!**",
-                liveTitle: "## Живой текст: {title}",
-                syncing: "🔄 Синхронизация текста...",
-                fullTitle: "## Полный текст: {title}",
-                stopButton: "Остановить текст",
-                fullButton: "Полный текст",
-                deleteButton: "Удалить"
             },
             trackInfo: {
                 title: "**Название:**",

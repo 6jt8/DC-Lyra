@@ -1179,7 +1179,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "Erreur de gestion de la fin de la file d'attente :",
             errorCleanupPrevious: "Erreur de nettoyage du message de piste précédent :",
             errorCleanupTrack: "Erreur de nettoyage du message de piste :",
-            lyricsFetchError: "❌ Erreur de récupération des paroles : {message}",
             unableToSendMessage: {
                 title: "## ⚠️ Impossible d'envoyer le message",
                 message: "Impossible d'envoyer le message. Vérifiez les permissions du bot."
@@ -1217,16 +1216,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **La boucle de piste est activée !**",
                 queueLoopActivated: "🔁 **La boucle de file d'attente est activée !**",
                 loopDisabled: "❌ **La boucle est désactivée !**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **Aucune chanson n'est actuellement en cours de lecture.**",
-                notFound: "❌ **Paroles non trouvées !**",
-                liveTitle: "## Paroles en Direct : {title}",
-                syncing: "🔄 Synchronisation des paroles...",
-                fullTitle: "## Paroles Complètes : {title}",
-                stopButton: "Arrêter les Paroles",
-                fullButton: "Paroles Complètes",
-                deleteButton: "Supprimer"
             },
             trackInfo: {
                 title: "**Titre :**",

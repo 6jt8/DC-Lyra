@@ -1179,7 +1179,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "Fehler beim Behandeln des Warteschlangenendes:",
             errorCleanupPrevious: "Fehler beim Bereinigen der vorherigen Track-Nachricht:",
             errorCleanupTrack: "Fehler beim Bereinigen der Track-Nachricht:",
-            lyricsFetchError: "❌ Fehler beim Abrufen der Lyrics: {message}",
             unableToSendMessage: {
                 title: "## ⚠️ Nachricht kann nicht gesendet werden",
                 message: "Nachricht kann nicht gesendet werden. Bot-Berechtigungen überprüfen."
@@ -1217,16 +1216,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **Track-Schleife ist aktiviert!**",
                 queueLoopActivated: "🔁 **Warteschlangen-Schleife ist aktiviert!**",
                 loopDisabled: "❌ **Schleife ist deaktiviert!**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **Es wird derzeit kein Song abgespielt.**",
-                notFound: "❌ **Text nicht gefunden!**",
-                liveTitle: "## Live-Text: {title}",
-                syncing: "🔄 Synchronisiere Text...",
-                fullTitle: "## Vollständiger Text: {title}",
-                stopButton: "Text Stoppen",
-                fullButton: "Vollständiger Text",
-                deleteButton: "Löschen"
             },
             trackInfo: {
                 title: "**Titel:**",

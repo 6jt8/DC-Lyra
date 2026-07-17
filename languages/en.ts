@@ -1210,7 +1210,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "Error handling queue end:",
             errorCleanupPrevious: "Error cleaning up previous track message:",
             errorCleanupTrack: "Error cleaning up track message:",
-            lyricsFetchError: "❌ Lyrics fetch error: {message}",
             unableToSendMessage: {
                 title: "## ⚠️ Unable to Send Message",
                 message: "Unable to send message. Check bot permissions."
@@ -1248,16 +1247,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **Track loop is activated!**",
                 queueLoopActivated: "🔁 **Queue loop is activated!**",
                 loopDisabled: "❌ **Loop is disabled!**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **No song is currently playing.**",
-                notFound: "❌ **Lyrics not found!**",
-                liveTitle: "## Live Lyrics: {title}",
-                syncing: "🔄 Syncing lyrics...",
-                fullTitle: "## Full Lyrics: {title}",
-                stopButton: "Stop Lyrics",
-                fullButton: "Full Lyrics",
-                deleteButton: "Delete"
             },
             trackInfo: {
                 title: "**Title:**",

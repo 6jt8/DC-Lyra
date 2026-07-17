@@ -1179,7 +1179,6 @@ const lang: Record<string, any> = {
             errorQueueEnd: "대기열 종료 처리 오류:",
             errorCleanupPrevious: "이전 트랙 메시지 정리 오류:",
             errorCleanupTrack: "트랙 메시지 정리 오류:",
-            lyricsFetchError: "❌ 가사 가져오기 오류: {message}",
             unableToSendMessage: {
                 title: "## ⚠️ 메시지를 보낼 수 없음",
                 message: "메시지를 보낼 수 없습니다. 봇 권한을 확인하세요."
@@ -1217,16 +1216,6 @@ const lang: Record<string, any> = {
                 trackLoopActivated: "🔁 **트랙 반복이 활성화되었습니다!**",
                 queueLoopActivated: "🔁 **대기열 반복이 활성화되었습니다!**",
                 loopDisabled: "❌ **반복이 비활성화되었습니다!**"
-            },
-            lyrics: {
-                noSongPlaying: "🚫 **현재 재생 중인 노래가 없습니다.**",
-                notFound: "❌ **가사를 찾을 수 없습니다!**",
-                liveTitle: "## 실시간 가사: {title}",
-                syncing: "🔄 가사 동기화 중...",
-                fullTitle: "## 전체 가사: {title}",
-                stopButton: "가사 중지",
-                fullButton: "전체 가사",
-                deleteButton: "삭제"
             },
             trackInfo: {
                 title: "**제목:**",
