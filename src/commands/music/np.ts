@@ -4,22 +4,11 @@ import { checkCurrentTrack } from '../../utils/playerValidation.js';
 import { handleCommandError, safeDeferReply, buildPaleCard, sanitizeTitle } from '../../ui/responseHandler.js';
 import { getLang } from '../../utils/language.js';
 import { getEmoji } from '../../emoji/emoji.js';
+import { createProgressBar } from '../../music/player-ui.js';
 
 const data = new SlashCommandBuilder()
   .setName("np")
   .setDescription("Displays the currently playing song with a progress bar");
-
-function createProgressBar(current: number, total: number, length = 20) {
-    const progress = Math.round((current / total) * length);
-    const emptyProgress = length - progress;
-
-    const progressText = '▓'.repeat(progress); 
-    const emptyProgressText = '░'.repeat(emptyProgress); 
-    const time = new Date(current * 1000).toISOString().substr(11, 8);
-    const endTime = new Date(total * 1000).toISOString().substr(11, 8);
-
-    return `\`${time}\` ${progressText}${emptyProgressText} \`${endTime}\``;
-}
 
 export default {
     data: data,
@@ -53,7 +42,7 @@ export default {
                 return reply;
             }
 
-            const progressBar = createProgressBar(player.position / 1000, player.current.info.length / 1000);
+            const progressBar = createProgressBar(player.position, player.current.info.length);
             const card = buildPaleCard(
                 `${getEmoji('music')} ${sanitizeTitle(t.title, 'Now Playing')}`,
                 [

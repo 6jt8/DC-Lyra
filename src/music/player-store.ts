@@ -38,7 +38,8 @@ let commandMentionCache: {
 };
 
 export async function getCommandMentionMap(
-  client: any
+  client: any,
+  interaction?: any
 ): Promise<Map<string, string>> {
   const now = Date.now();
   if (
@@ -50,10 +51,19 @@ export async function getCommandMentionMap(
 
   const map = new Map<string, string>();
   try {
-    const fetched = await client.application.commands.fetch();
-    fetched.forEach((cmd: any) => {
+    const globalCommands = await client.application.commands.fetch();
+    globalCommands.forEach((cmd: any) => {
       if (cmd?.name && cmd?.id) map.set(cmd.name, cmd.id);
     });
+  } catch (_) {}
+
+  try {
+    if (interaction?.guild?.commands) {
+      const guildCommands = await interaction.guild.commands.fetch();
+      guildCommands.forEach((cmd: any) => {
+        if (cmd?.name && cmd?.id) map.set(cmd.name, cmd.id);
+      });
+    }
   } catch (_) {}
 
   commandMentionCache = {
@@ -66,7 +76,7 @@ export async function getCommandMentionMap(
 
 export function getCommandRef(
   name: string,
-  mentionMap: Map<string, string>
+  mentionMap?: Map<string, string>
 ): string {
   const id = mentionMap?.get?.(name);
   return id ? `</${name}:${id}>` : `/${name}`;
@@ -112,15 +122,4 @@ export function stopCollector(guildId: string): void {
   }
 }
 
-export async function restartCollector(
-  client: any,
-  guildId: string,
-  channel: any,
-  message: any
-): Promise<any> {
-  stopCollector(guildId);
-  const player = client.riffy?.players?.get(guildId);
-  if (!player || player.destroyed) return null;
-  const { setupCollector } = await import("./player-interaction.js");
-  return setupCollector(client, player, channel, message);
-}
+
