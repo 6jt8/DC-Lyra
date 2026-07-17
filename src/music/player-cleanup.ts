@@ -10,7 +10,8 @@ import {
   clearTrackMediaCache,
   sendMessageWithPermissionsCheck,
 } from "./player-ui.js";
-import { stopCollector, restartCollector } from "./player-store.js";
+import { stopCollector } from "./player-store.js";
+import { restartCollector } from "./player-interaction.js";
 import { deletePlayerSession } from "../database/player-sessions.js";
 import { config } from "../config.js";
 import { deleteMessageIfExists, getTextChannel } from "./player-message-utils.js";

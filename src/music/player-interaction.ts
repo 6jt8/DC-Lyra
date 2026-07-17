@@ -4,24 +4,13 @@ import { config } from "../config.js";
 import { colors } from "../ui/colors.js";
 import { getLang, getLangSync } from "../utils/language.js";
 import {
-  nowPlayingMessages,
   guildActiveFilter,
   interactionCollectors,
   PLAYER_FAVORITES_NAME,
   LEGACY_PLAYER_FAVORITES_NAME,
-  getCommandMentionMap,
   requesters,
 } from "./player-store.js";
-import {
-  sendEmbed,
-  sendMessageWithPermissionsCheck,
-  buildNowPlayingContainer,
-  buildPlayerActionRows,
-  clearTrackMediaCache,
-  getTrackMediaCache,
-  setTrackMediaCache,
-} from "./player-ui.js";
-import { stopCollector, restartCollector } from "./player-store.js";
+import { stopCollector } from "./player-store.js";
 import { refreshNowPlayingPanel, cleanupTrackMessages } from "./player-cleanup.js";
 import { applyFilterByKey } from "./player-filters.js";
 import { getPlaylistCollection } from "../database/database.js";
@@ -208,11 +197,6 @@ async function handleInteraction(
     case "disableLoop": {
       disableLoop(player, channel, t);
       await refreshNowPlayingPanel(client, guildId);
-      break;
-    }
-    case "showLyrics": {
-      const { showLyrics } = await import("./player-lyrics.js");
-      await showLyrics(client, channel, player);
       break;
     }
     case "clearQueue": {
@@ -549,7 +533,7 @@ async function handlePlayerModalSubmit(
         });
       }
 
-      // Get current songs and add new song (avoid duplicates)
+      
         const col = getPlaylistCollection()!;
         const playlist = await col.findOne({ name: playlistName, userId, serverId });
         const currentSongs = playlist?.songs || [];
@@ -630,4 +614,16 @@ function disableLoop(
 ): string {
   player.setLoop("none");
   return t.controls?.loopDisabled || "❌ **Loop is disabled!**";
+}
+
+export async function restartCollector(
+  client: any,
+  guildId: string,
+  channel: any,
+  message: any
+): Promise<any> {
+  stopCollector(guildId);
+  const player = client.riffy?.players?.get(guildId);
+  if (!player || player.destroyed) return null;
+  return setupCollector(client, player, channel, message);
 }
