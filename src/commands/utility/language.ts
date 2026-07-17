@@ -39,8 +39,9 @@ export default {
         }, timeout);
       };
 
-      if (interaction.guild.ownerId !== interaction.user.id) {
-        return sendCard("## ❌ Access Denied\n\nYou don't have permission to change the language!\nOnly the server owner can change the bot's language.", 5000, 'Access Denied');
+      const { hasDjPermission } = await import('../../utils/djRole.js');
+      if (!hasDjPermission(interaction)) {
+        return sendCard("## ❌ Access Denied\n\nYou don't have permission to change the language!\nOnly the server owner or users with the DJ role can change the bot's language.", 5000, 'Access Denied');
       }
 
       const action = interaction.options.getString('action');

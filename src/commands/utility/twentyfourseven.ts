@@ -21,7 +21,8 @@ export default {
             if (!deferred && !interaction.deferred && !interaction.replied) return;
             const lang = await getLang(interaction.guildId);
 
-            if (interaction.guild.ownerId !== interaction.user.id) {
+            const { hasDjPermission } = await import('../../utils/djRole.js');
+            if (!hasDjPermission(interaction)) {
                 const errorContainer = buildPaleCard(
                     `${getEmoji('error')} ${sanitizeTitle(lang.utility.twentyfourseven.accessDenied.title, 'Access Denied')}`,
                     [lang.utility.twentyfourseven.accessDenied.message]

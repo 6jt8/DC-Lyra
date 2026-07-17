@@ -14,6 +14,7 @@ import * as path from 'path';
 import { getLang } from '../../utils/language.js';
 import { getEmoji, getButtonEmoji } from '../../emoji/emoji.js';
 import { safeDeferReply, stripLeadingIcons } from '../../ui/responseHandler.js';
+import { getCommandMentionMap, getCommandRef } from '../../music/player-store.js';
 
 const data = new SlashCommandBuilder()
   .setName("help")
@@ -30,9 +31,6 @@ const data = new SlashCommandBuilder()
         { name: "🔧 Utility Commands", value: "utility" }
       )
   );
-
-    const COMMAND_MENTION_CACHE_TTL_MS = 5 * 60 * 1000;
-    const commandMentionCache = new Map();
 
 function getCommandCategory(commandName: string): string {
   const commandsDir = path.resolve(__dirname, '../../commands');
@@ -84,52 +82,6 @@ function getPingStatus(ping: number): string {
   if (ping <= 180) return `${getEmoji('success')} Good`;
   if (ping <= 280) return `${getEmoji('warning')} Stable`;
   return `${getEmoji('error')} High`;
-}
-
-function getCommandRef(commandName: string, mentionMap?: Map<string, string>): string {
-  if (!mentionMap) return `/${commandName}`;
-  return mentionMap.get(commandName) || `/${commandName}`;
-}
-
-async function getCommandMentionMap(client: any, interaction: any): Promise<Map<string, string>> {
-  const guildId = interaction.guildId || 'global';
-  const cache = commandMentionCache.get(guildId);
-  const now = Date.now();
-
-  if (cache && (now - cache.fetchedAt) < COMMAND_MENTION_CACHE_TTL_MS) {
-    return cache.map;
-  }
-
-  const mentionMap = new Map<string, string>();
-
-  try {
-    if (client.application?.commands) {
-      const globalCommands = await client.application.commands.fetch();
-      globalCommands.forEach((command: any) => {
-        if (command.type === 1) {
-          mentionMap.set(command.name, `</${command.name}:${command.id}>`);
-        }
-      });
-    }
-  } catch (_) {}
-
-  try {
-    if (interaction.guild?.commands) {
-      const guildCommands = await interaction.guild.commands.fetch();
-      guildCommands.forEach((command: any) => {
-        if (command.type === 1) {
-          mentionMap.set(command.name, `</${command.name}:${command.id}>`);
-        }
-      });
-    }
-  } catch (_) {}
-
-  commandMentionCache.set(guildId, {
-    fetchedAt: now,
-    map: mentionMap
-  });
-
-  return mentionMap;
 }
 
 function getCategoryMeta(lang: any, categoryKey: string) {
@@ -296,9 +248,10 @@ function buildMainBody(client: any, lang: any, groupedCommands: any, commandMent
 function getCategorySections(categoryKey: string) {
   const map: Record<string, { title: string; keys: string[] }[]> = {
     music: [
-      { title: 'Playback', keys: ['play', 'search', 'pause', 'resume', 'skip', 'stop', 'seek', 'volume', 'np', 'trackinfo', 'voteskip'] },
-      { title: 'Queue', keys: ['queue', 'shuffle', 'move', 'remove', 'jump'] },
-      { title: 'Effects', keys: ['filters', 'autoplay'] }
+      { title: 'Playback', keys: ['play', 'search', 'pause', 'resume', 'skip', 'stop', 'seek', 'volume', 'np', 'trackinfo', 'voteskip', 'join', 'leave', 'previous', 'loop', 'forceskip', 'rewind', 'forward', 'restart', 'bassboost', 'speed'] },
+      { title: 'Queue', keys: ['queue', 'shuffle', 'move', 'remove', 'jump', 'clear', 'skipto', 'lock', 'unlock'] },
+      { title: 'Effects', keys: ['filters', 'autoplay', 'equalizer'] },
+      { title: 'Other', keys: ['grab', 'summon', 'disconnect'] }
     ],
     playlist: [
       { title: 'Manage', keys: ['createplaylist', 'deleteplaylist', 'myplaylists', 'allplaylists'] },
