@@ -43,7 +43,7 @@
     "vitest": "^4.1.10"
   },
   "optionalDependencies": {
-    "better-sqlite3": "^12.10.0"
+    "better-sqlite3": "^12.11.1"
   },
   "author": "6jt8",
   "license": "AGPL-3.0"
