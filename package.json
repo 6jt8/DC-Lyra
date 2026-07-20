@@ -18,7 +18,7 @@
     "bun": ">=1.0"
   },
   "dependencies": {
-    "@discordjs/rest": "^2.6.1",
+    "@discordjs/rest": "^2.6.3",
     "@napi-rs/canvas": "^1.0.2",
     "axios": "^1.8.1",
     "decomment": "^0.9.5",
